@@ -1,7 +1,7 @@
 import { verifySession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LogOut, FolderKanban, CheckSquare, Users, FileText } from "lucide-react";
+import { LogOut, FolderKanban, CheckSquare, Users, FileText, Activity } from "lucide-react";
 import { logoutAction } from "@/actions/auth";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +36,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/users" className="flex items-center gap-3 px-3 py-2 text-sm font-medium hover:bg-muted rounded-md transition-colors">
             <Users size={18} />
             Utilisateurs
+          </Link>
+          <Link href="/activity" className="flex items-center gap-3 px-3 py-2 text-sm font-medium hover:bg-muted rounded-md transition-colors">
+            <Activity size={18} />
+            Activité
           </Link>
         </nav>
         <div className="mt-auto border-t pt-4">

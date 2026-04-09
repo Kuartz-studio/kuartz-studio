@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { logActivity } from "./activities";
 
 const insertTaskSchema = z.object({
   projectId: z.string(),
@@ -45,6 +46,7 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
     });
 
     revalidatePath(`/projects/${project.slug}`);
+    await logActivity({ type: "task_created", entityType: "task", entityId: parsed.data.projectId, entityTitle: parsed.data.title });
     return { data: { success: true } };
   } catch (error) {
     return { error: "Erreur serveur" };
@@ -71,5 +73,6 @@ export async function updateTaskStatusAction(taskId: string, status: "BACKLOG"|"
     return { error: "Non autorisé" };
   }
   await db.update(tasks).set({ status }).where(eq(tasks.id, taskId));
+  await logActivity({ type: "task_status_changed", entityType: "task", entityId: taskId, metadata: { status } });
   revalidatePath(`/projects/${projectSlug}`);
 }
