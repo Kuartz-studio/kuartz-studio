@@ -7,6 +7,7 @@ import { verifySession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { logActivity } from "./activities";
+import { notifyAdmins } from "./notifications";
 
 const insertCommentSchema = z.object({
   taskId: z.string(),
@@ -45,6 +46,7 @@ export async function createCommentAction(prevState: CommentActionState, formDat
 
     revalidatePath("/tasks");
     await logActivity({ type: "comment_created", entityType: "task", entityId: parsed.data.taskId });
+    await notifyAdmins({ type: "comment_created", message: "Nouveau commentaire sur une tâche", linkTo: `/tasks/${parsed.data.taskId}`, excludeUserId: session.userId });
     return { data: { success: true } };
   } catch (error) {
     console.error("[createCommentAction]", error);

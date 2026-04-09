@@ -6,3 +6,4 @@ export * from "./documents";
 export * from "./comments";
 export * from "./file-attachments";
 export * from "./activities";
+export * from "./notifications";

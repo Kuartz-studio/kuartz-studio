@@ -7,6 +7,7 @@ import { verifySession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { logActivity } from "./activities";
+import { notifyAdmins } from "./notifications";
 
 const insertTaskSchema = z.object({
   projectId: z.string(),
@@ -47,6 +48,7 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
 
     revalidatePath(`/projects/${project.slug}`);
     await logActivity({ type: "task_created", entityType: "task", entityId: parsed.data.projectId, entityTitle: parsed.data.title });
+    await notifyAdmins({ type: "task_created", message: `Nouvelle tâche : ${parsed.data.title}`, linkTo: `/projects/${project.slug}`, excludeUserId: session.userId });
     return { data: { success: true } };
   } catch (error) {
     return { error: "Erreur serveur" };

@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LogOut, FolderKanban, CheckSquare, Users, FileText, Activity } from "lucide-react";
 import { logoutAction } from "@/actions/auth";
+import { getMyNotifications, getUnreadCount } from "@/actions/notifications";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await verifySession();
@@ -16,10 +18,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/portal");
   }
 
+  const myNotifs = await getMyNotifications();
+  const unreadCount = await getUnreadCount();
+
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="w-64 bg-card/50 border-r flex flex-col p-4 gap-6 shrink-0">
-        <div className="font-bold text-xl px-2 tracking-tight">Kuartz Studio</div>
+        <div className="flex items-center justify-between">
+          <div className="font-bold text-xl px-2 tracking-tight">Kuartz Studio</div>
+          <NotificationBell notifications={myNotifs} unreadCount={unreadCount} />
+        </div>
         <nav className="flex flex-col gap-1 flex-grow">
           <Link href="/tasks" className="flex items-center gap-3 px-3 py-2 text-sm font-medium hover:bg-muted rounded-md transition-colors">
             <CheckSquare size={18} />
