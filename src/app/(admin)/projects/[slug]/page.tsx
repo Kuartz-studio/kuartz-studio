@@ -1,12 +1,14 @@
 import { db } from "@/db";
-import { projects } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { projects, tasks } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { deleteProjectAction } from "@/actions/projects";
+import { TasksTable } from "@/components/tasks/TasksTable";
+import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -14,7 +16,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   if (!project) notFound();
 
-  // On crée un Server Action lié directement au bon projet pour le bouton supprimer
+  const projectTasks = await db.select().from(tasks).where(eq(tasks.projectId, project.id)).orderBy(desc(tasks.issueNumber));
+
   const safeDeleteAction = deleteProjectAction.bind(null, project.id);
 
   return (
@@ -66,12 +69,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 <span>{project.createdAt?.toLocaleDateString("fr-FR")}</span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-muted-foreground font-medium">Accès</span>
-                <span className="text-muted-foreground italic">Non défini</span>
+                <span className="text-muted-foreground font-medium">Tâches totales</span>
+                <span>{projectTasks.length}</span>
               </div>
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-4 mt-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Tâches</h2>
+          <NewTaskDialog projectId={project.id} />
+        </div>
+        <TasksTable tasks={projectTasks} />
       </div>
     </div>
   );
