@@ -1,74 +1,79 @@
 "use client";
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-
-const priorityMap = {
-  0: { label: "N/A", color: "bg-slate-100 text-slate-800" },
-  1: { label: "Basse", color: "bg-blue-100 text-blue-800" },
-  2: { label: "Moyenne", color: "bg-yellow-100 text-yellow-800" },
-  3: { label: "Haute", color: "bg-orange-100 text-orange-800" },
-  4: { label: "Urgente", color: "bg-red-100 text-red-800" },
-};
-
-const statusMap = {
-  BACKLOG: { label: "Backlog", variant: "secondary" as const },
-  TODO: { label: "À faire", variant: "secondary" as const },
-  IN_PROGRESS: { label: "En cours", variant: "default" as const },
-  PAUSED: { label: "En pause", variant: "outline" as const },
-  DONE: { label: "Terminé", variant: "outline" as const },
-  CANCELED: { label: "Annulé", variant: "destructive" as const },
-};
+import { motion, AnimatePresence } from "motion/react";
+import { StatusIcon, PriorityIcon, AvatarCustom } from "@/components/ui/table-icons";
 
 export function TasksTable({ tasks }: { tasks: any[] }) {
   if (tasks.length === 0) {
     return (
-      <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
-        Aucune tâche créée pour ce projet.
+      <div className="flex flex-col items-center justify-center p-12 py-24 border border-[var(--color-border)] border-dashed rounded-xl bg-[var(--color-card)]/50 text-[var(--color-muted-foreground)] text-sm">
+        Aucune tâche trouvée.
       </div>
     );
   }
 
   return (
-    <div className="rounded-md border bg-card">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[80px]">ID</TableHead>
-            <TableHead>Titre</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead>Priorité</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tasks.map((task) => (
-            <TableRow key={task.id}>
-              <TableCell className="font-mono text-muted-foreground text-xs">
-                #{task.issueNumber}
-              </TableCell>
-              <TableCell className="font-medium">{task.title}</TableCell>
-              <TableCell>
-                <Badge variant={statusMap[task.status as keyof typeof statusMap]?.variant || "secondary"}>
-                  {statusMap[task.status as keyof typeof statusMap]?.label || task.status}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline" className={`font-normal ${priorityMap[task.priority as keyof typeof priorityMap]?.color || ""}`}>
-                  {priorityMap[task.priority as keyof typeof priorityMap]?.label || task.priority}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <Link href={`/tasks/${task.id}`}>
-                  <Button variant="ghost" size="sm">Détails</Button>
-                </Link>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <div className="rounded-xl border border-[var(--color-border)] overflow-y-auto bg-[var(--color-card)] flex flex-col flex-1 max-h-full custom-scrollbar relative">
+      <div className="flex-1 p-0">
+        <table className="text-sm border-collapse w-full relative table-fixed">
+          <thead className="sticky top-0 z-10 shadow-sm bg-[var(--color-muted)]">
+            <tr>
+              <th className="px-4 py-3 text-left w-24 border-b border-[var(--color-border)]">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">ID</span>
+              </th>
+              <th className="px-4 py-3 text-left border-b border-[var(--color-border)]">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Titre</span>
+              </th>
+              <th className="px-4 py-3 text-center w-24 border-b border-[var(--color-border)]">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Statut</span>
+              </th>
+              <th className="px-4 py-3 text-center w-24 border-b border-[var(--color-border)]">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Priorité</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <AnimatePresence>
+              {tasks.map((task) => (
+                <motion.tr
+                  key={task.id}
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)]/40 transition-colors group cursor-pointer"
+                >
+                  <td className="px-4 py-2">
+                    <Link href={`/tasks/${task.id}`} className="block">
+                      <span className="font-mono text-xs font-medium text-[var(--color-muted-foreground)]">
+                        #{task.issueNumber}
+                      </span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2">
+                    <Link href={`/tasks/${task.id}`} className="block">
+                      <span className="text-[13px] font-medium text-[var(--color-foreground)] group-hover:underline group-hover:decoration-dashed group-hover:decoration-[var(--color-muted-foreground)] underline-offset-2 truncate block">
+                        {task.title}
+                      </span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <div className="flex justify-center text-[var(--color-muted-foreground)]">
+                      <StatusIcon value={task.status} />
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <div className="flex justify-center text-[var(--color-muted-foreground)]">
+                      <PriorityIcon value={task.priority} />
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+            </AnimatePresence>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

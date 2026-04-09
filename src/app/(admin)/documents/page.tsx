@@ -31,34 +31,60 @@ export default async function DocumentsPage() {
         <NewDocumentDialog projects={allProjects} />
       </div>
 
-      <div className="bg-card rounded-md border flex flex-col divide-y">
+      <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-card)] flex flex-col flex-1">
         {allDocs.length === 0 ? (
-          <div className="text-center p-8 text-muted-foreground">
+          <div className="text-center p-8 pb-12 text-sm text-[var(--color-muted-foreground)] m-auto">
             Aucun document. Cliquez sur &quot;Nouveau Document&quot; pour commencer.
           </div>
         ) : (
-          allDocs.map(doc => (
-            <Link
-              key={doc.id}
-              href={`/documents/${doc.slug}`}
-              className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <FileText className="text-muted-foreground" size={20} />
-                <div className="flex flex-col">
-                  <span className="font-medium text-sm">{doc.title}</span>
-                  {doc.projectName && (
-                    <span className="text-xs text-muted-foreground">{doc.projectName}</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span>{doc.authorName}</span>
-                <span>{doc.updatedAt?.toLocaleDateString("fr-FR")}</span>
-                <ChevronRight size={16} />
-              </div>
-            </Link>
-          ))
+          <table className="text-sm border-collapse w-full relative table-fixed">
+            <thead className="bg-[var(--color-muted)]">
+              <tr>
+                <th className="px-4 py-3 text-left border-b border-[var(--color-border)]">
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Titre</span>
+                </th>
+                <th className="px-4 py-3 text-left w-[25%] border-b border-[var(--color-border)]">
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Projet</span>
+                </th>
+                <th className="px-4 py-3 text-left w-32 border-b border-[var(--color-border)]">
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Auteur</span>
+                </th>
+                <th className="px-4 py-3 text-right w-32 border-b border-[var(--color-border)]">
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Date</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {allDocs.map((doc) => (
+                <tr key={doc.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)]/40 transition-colors group cursor-pointer relative">
+                  <td className="px-4 py-2">
+                    <Link href={`/documents/${doc.slug}`} className="absolute inset-0 z-10" />
+                    <div className="flex items-center gap-2">
+                       <FileText className="text-[var(--color-muted-foreground)] h-4 w-4 shrink-0" />
+                       <span className="text-[13px] font-medium text-[var(--color-foreground)] truncate block group-hover:underline group-hover:decoration-dashed group-hover:decoration-[var(--color-muted-foreground)] underline-offset-2">
+                         {doc.title}
+                       </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className="text-[12px] text-[var(--color-muted-foreground)] truncate block">
+                      {doc.projectName || <span className="italic opacity-50">-</span>}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className="text-[12px] text-[var(--color-muted-foreground)] truncate block">
+                      {doc.authorName}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <span className="text-[12px] text-[var(--color-muted-foreground)]">
+                      {doc.updatedAt?.toLocaleDateString("fr-FR")}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

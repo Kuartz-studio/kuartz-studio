@@ -1,10 +1,14 @@
 import { verifySession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { LogOut, FolderKanban, CheckSquare, Users, FileText, Activity } from "lucide-react";
 import { logoutAction } from "@/actions/auth";
 import { getMyNotifications, getUnreadCount } from "@/actions/notifications";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await verifySession();
@@ -18,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/portal");
   }
 
+  const [currentUser] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
   const myNotifs = await getMyNotifications();
   const unreadCount = await getUnreadCount();
 
@@ -28,35 +33,41 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="font-bold text-xl px-2 tracking-tight">Kuartz Studio</div>
           <NotificationBell notifications={myNotifs} unreadCount={unreadCount} />
         </div>
-        <nav className="flex flex-col gap-1 flex-grow">
-          <Link href="/tasks" className="flex items-center gap-3 px-3 py-2 text-sm font-medium hover:bg-muted rounded-md transition-colors">
-            <CheckSquare size={18} />
-            Tâches
-          </Link>
-          <Link href="/projects" className="flex items-center gap-3 px-3 py-2 text-sm font-medium hover:bg-muted rounded-md transition-colors">
-            <FolderKanban size={18} />
-            Projets
-          </Link>
-          <Link href="/documents" className="flex items-center gap-3 px-3 py-2 text-sm font-medium hover:bg-muted rounded-md transition-colors">
-            <FileText size={18} />
-            Documents
-          </Link>
-          <Link href="/users" className="flex items-center gap-3 px-3 py-2 text-sm font-medium hover:bg-muted rounded-md transition-colors">
-            <Users size={18} />
-            Utilisateurs
-          </Link>
-          <Link href="/activity" className="flex items-center gap-3 px-3 py-2 text-sm font-medium hover:bg-muted rounded-md transition-colors">
-            <Activity size={18} />
-            Activité
-          </Link>
-        </nav>
-        <div className="mt-auto border-t pt-4">
-          <form action={logoutAction}>
-            <button className="flex w-full items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors">
-              <LogOut size={18} />
-              Déconnexion
-            </button>
-          </form>
+        <SidebarNav
+          items={[
+            { path: "/tasks", label: "Tâches", icon: <CheckSquare size={18} /> },
+            { path: "/projects", label: "Projets", icon: <FolderKanban size={18} /> },
+            { path: "/documents", label: "Documents", icon: <FileText size={18} /> },
+            { path: "/users", label: "Utilisateurs", icon: <Users size={18} /> },
+            { path: "/activity", label: "Activité", icon: <Activity size={18} /> },
+          ]}
+        />
+        <div className="flex flex-col border-t pt-4 mt-auto">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border bg-sidebar-accent shadow-sm flex items-center justify-center">
+                {currentUser?.avatarUrl ? (
+                  <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-medium text-xs text-sidebar-foreground">
+                    {currentUser?.name?.charAt(0) || "U"}
+                  </span>
+                )}
+              </div>
+              <span className="text-sm font-medium text-sidebar-foreground truncate">
+                {currentUser?.name || "Admin"}
+              </span>
+            </div>
+            
+            <form action={logoutAction}>
+              <button 
+                title="Déconnexion"
+                className="flex items-center justify-center text-muted-foreground hover:text-red-500 transition-colors p-1.5 rounded-md hover:bg-red-500/10"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
         </div>
       </aside>
       <main className="flex-1 p-8 overflow-x-hidden">
