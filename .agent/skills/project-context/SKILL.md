@@ -91,7 +91,7 @@ Le schéma va évoluer. Nouvelles tables à ajouter progressivement :
 
 - **Document** : markdown docs par projet (title, content en markdown, projectId, authorId, slug, order)
 - **Comment** : commentaires sur les tasks (content, taskId, authorId, createdAt)
-- **FileAttachment** : pièces jointes (fileName, fileUrl, fileSize, mimeType, lié à Task ou Document ou Comment)
+- **FileAttachment** : liens externes vers des fichiers (title, url, format via dropdown, lié à Task ou Project — PAS d'upload fichier, uniquement des liens Drive/Figma/etc.)
 - **Activity** : log d'activité (type, entityType, entityId, userId, metadata JSON, createdAt)
 - **Notification** : notifications utilisateur (type, message, userId, read, linkTo)
 

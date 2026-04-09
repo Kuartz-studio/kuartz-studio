@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getTaskComments } from "@/actions/comments";
+import { getTaskAttachments } from "@/actions/file-attachments";
 import { TaskComments } from "@/components/comments/TaskComments";
+import { TaskAttachments } from "@/components/attachments/TaskAttachments";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   BACKLOG: { label: "Backlog", variant: "secondary" },
@@ -50,6 +52,9 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ tas
 
   // Get comments
   const taskComments = await getTaskComments(taskId);
+
+  // Get attachments
+  const taskAttachments = await getTaskAttachments(taskId);
 
   const status = statusMap[task.status] || { label: task.status, variant: "secondary" as const };
 
@@ -151,6 +156,16 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ tas
                 <span className="text-muted-foreground font-medium">Créé le</span>
                 <span>{task.createdAt?.toLocaleDateString("fr-FR")}</span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Attachments */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Fichiers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TaskAttachments taskId={taskId} initialAttachments={taskAttachments} />
             </CardContent>
           </Card>
         </div>
