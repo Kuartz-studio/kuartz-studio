@@ -3,6 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const priorityMap = {
   0: { label: "N/A", color: "bg-slate-100 text-slate-800" },
@@ -60,7 +61,9 @@ export function TasksTable({ tasks }: { tasks: any[] }) {
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <Button variant="ghost" size="sm">Détails</Button>
+                <Link href={`/tasks/${task.id}`}>
+                  <Button variant="ghost" size="sm">Détails</Button>
+                </Link>
               </TableCell>
             </TableRow>
           ))}
