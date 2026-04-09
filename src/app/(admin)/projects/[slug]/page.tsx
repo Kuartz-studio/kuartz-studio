@@ -9,6 +9,9 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import { deleteProjectAction } from "@/actions/projects";
 import { TasksTable } from "@/components/tasks/TasksTable";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { NewDocumentDialog } from "@/components/documents/NewDocumentDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, ChevronRight } from "lucide-react";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -17,6 +20,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   if (!project) notFound();
 
   const projectTasks = await db.select().from(tasks).where(eq(tasks.projectId, project.id)).orderBy(desc(tasks.issueNumber));
+  
+  // Actually we need `documents` query too. We must import it above.
+  const { documents } = await import("@/db/schema");
+  const projectDocs = await db.select().from(documents).where(eq(documents.projectId, project.id)).orderBy(desc(documents.order));
 
   const safeDeleteAction = deleteProjectAction.bind(null, project.id);
 
@@ -77,13 +84,52 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 mt-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Tâches</h2>
-          <NewTaskDialog projectId={project.id} />
-        </div>
-        <TasksTable tasks={projectTasks} />
-      </div>
+      <Tabs defaultValue="tasks" className="w-full mt-4">
+        <TabsList className="mb-4">
+          <TabsTrigger value="tasks">Tâches</TabsTrigger>
+          <TabsTrigger value="docs">Documentation</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tasks" className="flex flex-col gap-4 focus-visible:outline-none">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold tracking-tight">Tâches</h2>
+            <NewTaskDialog projectId={project.id} />
+          </div>
+          <TasksTable tasks={projectTasks} />
+        </TabsContent>
+
+        <TabsContent value="docs" className="flex flex-col gap-4 focus-visible:outline-none">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold tracking-tight">Documents</h2>
+            <NewDocumentDialog projectId={project.id} />
+          </div>
+
+          <div className="bg-card rounded-md border flex flex-col divide-y">
+            {projectDocs.length === 0 ? (
+              <div className="text-center p-8 text-muted-foreground border-none">
+                Aucun document. Cliquez sur "Nouveau Document" pour commencer.
+              </div>
+            ) : (
+              projectDocs.map(doc => (
+                <Link 
+                  key={doc.id} 
+                  href={`/projects/${project.slug}/documents/${doc.slug}`}
+                  className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="text-muted-foreground" size={20} />
+                    <span className="font-medium text-sm">{doc.title}</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span>Modifié le {doc.updatedAt?.toLocaleDateString("fr-FR")}</span>
+                    <ChevronRight size={16} />
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
