@@ -258,6 +258,7 @@ src/
 ### Git & Workflow
 - ❌ NE JAMAIS faire de `git push` sans l'autorisation explicite de l'utilisateur.
 - ❌ Toujours attendre la demande de l'utilisateur avant de pousser le code.
+- ❌ L'autorisation fournie par l'utilisateur ne vaut que pour UN SEUL `git push` (1 crédit). Tu dois impérativement redemander l'autorisation à la prochaine modification.
 
 ## Mindset d'évolution incrémentale
 
