@@ -1,17 +1,16 @@
 import { db } from "@/db";
-import { projects, tasks } from "@/db/schema";
+import { projects, tasks, documents } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, FileText, ChevronRight } from "lucide-react";
 import { deleteProjectAction } from "@/actions/projects";
 import { TasksTable } from "@/components/tasks/TasksTable";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { NewDocumentDialog } from "@/components/documents/NewDocumentDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ChevronRight } from "lucide-react";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -20,10 +19,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   if (!project) notFound();
 
   const projectTasks = await db.select().from(tasks).where(eq(tasks.projectId, project.id)).orderBy(desc(tasks.issueNumber));
-  
-  // Actually we need `documents` query too. We must import it above.
-  const { documents } = await import("@/db/schema");
-  const projectDocs = await db.select().from(documents).where(eq(documents.projectId, project.id)).orderBy(desc(documents.order));
+  const projectDocs = await db.select().from(documents).where(eq(documents.projectId, project.id)).orderBy(desc(documents.updatedAt));
 
   const safeDeleteAction = deleteProjectAction.bind(null, project.id);
 
@@ -113,7 +109,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               projectDocs.map(doc => (
                 <Link 
                   key={doc.id} 
-                  href={`/projects/${project.slug}/documents/${doc.slug}`}
+                  href={`/documents/${doc.slug}`}
                   className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">

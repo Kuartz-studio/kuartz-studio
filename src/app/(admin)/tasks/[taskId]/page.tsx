@@ -1,16 +1,17 @@
 import { db } from "@/db";
-import { tasks, projects, users, taskAssignees, taskTags, tags } from "@/db/schema";
+import { tasks, projects, users, taskAssignees, taskTags, tags, documentToTask, documents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { getTaskComments } from "@/actions/comments";
 import { getTaskAttachments } from "@/actions/file-attachments";
 import { TaskComments } from "@/components/comments/TaskComments";
 import { TaskAttachments } from "@/components/attachments/TaskAttachments";
+import { NewDocumentDialog } from "@/components/documents/NewDocumentDialog";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   BACKLOG: { label: "Backlog", variant: "secondary" },
@@ -56,6 +57,13 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ tas
   // Get attachments
   const taskAttachments = await getTaskAttachments(taskId);
 
+  // Get linked documents
+  const linkedDocs = await db
+    .select({ id: documents.id, title: documents.title, slug: documents.slug })
+    .from(documentToTask)
+    .innerJoin(documents, eq(documentToTask.documentId, documents.id))
+    .where(eq(documentToTask.taskId, taskId));
+
   const status = statusMap[task.status] || { label: task.status, variant: "secondary" as const };
 
   return (
@@ -100,6 +108,32 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ tas
             </CardHeader>
             <CardContent>
               <TaskComments taskId={taskId} initialComments={taskComments} />
+            </CardContent>
+          </Card>
+
+          {/* Documents */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Documents</CardTitle>
+              <NewDocumentDialog projectId={task.projectId} taskId={taskId} />
+            </CardHeader>
+            <CardContent>
+              {linkedDocs.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">Aucun document lié à cette tâche.</p>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {linkedDocs.map(doc => (
+                    <Link
+                      key={doc.id}
+                      href={`/documents/${doc.slug}`}
+                      className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors text-sm text-primary hover:underline"
+                    >
+                      <FileText size={16} className="text-muted-foreground flex-shrink-0" />
+                      {doc.title}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

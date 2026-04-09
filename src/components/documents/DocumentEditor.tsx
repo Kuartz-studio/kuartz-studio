@@ -8,7 +8,7 @@ import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-export function DocumentEditor({ document, projectSlug }: { document: any, projectSlug: string }) {
+export function DocumentEditor({ document }: { document: any }) {
   const [title, setTitle] = useState(document.title);
   const [content, setContent] = useState(document.content || "");
   const [isPending, startTransition] = useTransition();
@@ -17,26 +17,24 @@ export function DocumentEditor({ document, projectSlug }: { document: any, proje
 
   const handleSave = () => {
     startTransition(async () => {
-      let slugChanged = false;
       let newSlug = document.slug;
 
       if (title !== document.title) {
-        const titleRes = await updateDocumentTitleAction(document.id, title, projectSlug);
+        const titleRes = await updateDocumentTitleAction(document.id, title);
         if (titleRes?.data?.slug) {
-          slugChanged = true;
           newSlug = titleRes.data.slug;
         }
       }
 
       if (content !== document.content) {
-        await updateDocumentContentAction(document.id, content, projectSlug);
+        await updateDocumentContentAction(document.id, content);
       }
 
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
 
-      if (slugChanged) {
-        router.replace(`/projects/${projectSlug}/documents/${newSlug}`);
+      if (newSlug !== document.slug) {
+        router.replace(`/documents/${newSlug}`);
       }
     });
   };
@@ -44,8 +42,8 @@ export function DocumentEditor({ document, projectSlug }: { document: any, proje
   const handleDelete = () => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
       startTransition(async () => {
-        await deleteDocumentAction(document.id, projectSlug);
-        router.push(`/projects/${projectSlug}`);
+        await deleteDocumentAction(document.id);
+        router.push("/documents");
       });
     }
   };
@@ -53,15 +51,15 @@ export function DocumentEditor({ document, projectSlug }: { document: any, proje
   return (
     <div className="flex flex-col h-full gap-4">
       <div className="flex items-center gap-4 bg-card p-4 rounded-xl border">
-        <Link href={`/projects/${projectSlug}`}>
+        <Link href="/documents">
           <Button variant="ghost" size="icon">
             <ArrowLeft size={18} />
           </Button>
         </Link>
         <div className="flex-1">
-          <Input 
-            value={title} 
-            onChange={e => setTitle(e.target.value)} 
+          <Input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
             className="text-xl font-bold bg-transparent border-transparent shadow-none h-auto px-2 focus-visible:ring-1"
           />
         </div>
@@ -77,7 +75,7 @@ export function DocumentEditor({ document, projectSlug }: { document: any, proje
       </div>
 
       <div className="flex-1 bg-card rounded-xl border flex flex-col overflow-hidden">
-        <textarea 
+        <textarea
           className="w-full h-full p-6 bg-transparent border-none resize-none focus:outline-none font-mono text-sm leading-relaxed"
           placeholder="Rédigez votre document en Markdown ici..."
           value={content}
