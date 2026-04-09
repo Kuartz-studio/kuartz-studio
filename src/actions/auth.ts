@@ -37,7 +37,7 @@ export async function loginAction(prevState: AuthState, formData: FormData): Pro
   // Les clients ("customer") se connectent sans mot de passe
   if (user.role === "customer") {
     await createSession(user.id, user.role);
-    redirect("/dashboard"); 
+    redirect("/portal"); 
   }
   
   // Les admins et salariés nécessitent un code PIN (digicode)
@@ -50,7 +50,7 @@ export async function loginAction(prevState: AuthState, formData: FormData): Pro
   }
   
   await createSession(user.id, user.role);
-  redirect("/dashboard");
+  redirect("/tasks");
 }
 
 export async function logoutAction() {

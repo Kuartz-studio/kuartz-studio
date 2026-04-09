@@ -1,20 +1,19 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { init } from "@paralleldrive/cuid2";
 import { projects } from "./projects";
+import { users } from "./users";
 
-const createId = init({ length: 24 });
+const createId = () => crypto.randomUUID();
 
 export const tasks = sqliteTable("task", {
   id: text("id").primaryKey().$defaultFn(() => createId()),
   projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  issueNumber: integer("issue_number"), // Auto-incremented per project via SQLite Trigger
+  issueNumber: integer("issue_number"),
   title: text("title").notNull(),
   description: text("description"),
-  status: text("status", { enum: ["todo", "in_progress", "review", "done"] }).notNull().default("todo"),
-  priority: text("priority", { enum: ["low", "medium", "high", "urgent"] }).notNull().default("medium"),
-  assignees: text("assignees", { mode: "json" }).$type<string[]>().default([]),
-  tags: text("tags", { mode: "json" }).$type<string[]>().default([]),
-  dueDate: integer("due_date", { mode: "timestamp" }),
+  status: text("status").notNull().default("BACKLOG"), // BACKLOG, TODO, IN_PROGRESS, PAUSED, DONE, CANCELED
+  priority: integer("priority").notNull().default(0), // 0, 1, 2, 3, 4
+  createdByUserId: text("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // added creator
+  targetDate: integer("target_date", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()).$onUpdate(() => new Date()),
 });

@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   const isAuthRoute = pathname.startsWith('/login');
-  const isProtectedRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/projects');
+  const isProtectedRoute = pathname.startsWith('/tasks') || pathname.startsWith('/projects') || pathname.startsWith('/users');
   
   const session = await verifySession();
   
@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
   }
   
   if (isAuthRoute && session) {
-    return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
+    return NextResponse.redirect(new URL('/tasks', request.nextUrl));
   }
   
   return NextResponse.next();

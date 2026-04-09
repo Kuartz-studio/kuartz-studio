@@ -61,10 +61,12 @@ export function NewTaskDialog({ projectId }: { projectId: string }) {
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todo">À faire</SelectItem>
-                  <SelectItem value="in_progress">En cours</SelectItem>
-                  <SelectItem value="review">En revue</SelectItem>
-                  <SelectItem value="done">Terminé</SelectItem>
+                  <SelectItem value="BACKLOG">Backlog</SelectItem>
+                  <SelectItem value="TODO">À faire</SelectItem>
+                  <SelectItem value="IN_PROGRESS">En cours</SelectItem>
+                  <SelectItem value="PAUSED">En pause</SelectItem>
+                  <SelectItem value="DONE">Terminé</SelectItem>
+                  <SelectItem value="CANCELED">Annulé</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -76,10 +78,11 @@ export function NewTaskDialog({ projectId }: { projectId: string }) {
                   <SelectValue placeholder="Priorité" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Basse</SelectItem>
-                  <SelectItem value="medium">Moyenne</SelectItem>
-                  <SelectItem value="high">Haute</SelectItem>
-                  <SelectItem value="urgent">Urgente</SelectItem>
+                  <SelectItem value="0">N/A</SelectItem>
+                  <SelectItem value="1">Basse</SelectItem>
+                  <SelectItem value="2">Moyenne</SelectItem>
+                  <SelectItem value="3">Haute</SelectItem>
+                  <SelectItem value="4">Urgente</SelectItem>
                 </SelectContent>
               </Select>
             </div>

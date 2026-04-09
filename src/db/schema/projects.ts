@@ -9,6 +9,10 @@ export const projects = sqliteTable("project", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   description: text("description"),
+  url: text("url"),
+  logoUrl: text("logo_url"),
+  priority: integer("priority").default(0),
+  targetDate: integer("target_date", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()).$onUpdate(() => new Date()),
 });

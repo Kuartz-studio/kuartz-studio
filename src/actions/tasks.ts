@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { tasks, projects } from "@/db/schema";
+import { tasks, projects, taskAssignees } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
@@ -11,8 +11,8 @@ const insertTaskSchema = z.object({
   projectId: z.string(),
   title: z.string().min(1, "Le titre est requis"),
   description: z.string().optional(),
-  status: z.enum(["todo", "in_progress", "review", "done"]).optional(),
-  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  status: z.enum(["BACKLOG", "TODO", "IN_PROGRESS", "PAUSED", "DONE", "CANCELED"]).optional(),
+  priority: z.coerce.number().int().min(0).max(4).optional(),
 });
 
 export type ActionState<T = any> = {
@@ -39,8 +39,9 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
       projectId: parsed.data.projectId,
       title: parsed.data.title,
       description: parsed.data.description,
-      status: parsed.data.status || "todo",
-      priority: parsed.data.priority || "medium",
+      status: parsed.data.status || "BACKLOG",
+      priority: parsed.data.priority ?? 0,
+      createdByUserId: session.userId,
     });
 
     revalidatePath(`/projects/${project.slug}`);
@@ -56,12 +57,15 @@ export async function updateTaskAssigneesAction(taskId: string, assignees: strin
     return { error: "Non autorisé" };
   }
 
-  await db.update(tasks).set({ assignees }).where(eq(tasks.id, taskId));
+  await db.delete(taskAssignees).where(eq(taskAssignees.taskId, taskId));
+  if (assignees.length > 0) {
+    await db.insert(taskAssignees).values(assignees.map(userId => ({ taskId, userId })));
+  }
   revalidatePath(`/projects/${projectSlug}`);
   return { success: true };
 }
 
-export async function updateTaskStatusAction(taskId: string, status: "todo"|"in_progress"|"review"|"done", projectSlug: string) {
+export async function updateTaskStatusAction(taskId: string, status: "BACKLOG"|"TODO"|"IN_PROGRESS"|"PAUSED"|"DONE"|"CANCELED", projectSlug: string) {
   const session = await verifySession();
   if (!session || (session.role !== "admin" && session.role !== "employee")) {
     return { error: "Non autorisé" };

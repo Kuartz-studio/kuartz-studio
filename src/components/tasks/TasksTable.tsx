@@ -5,17 +5,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const priorityMap = {
-  low: { label: "Basse", color: "bg-slate-100 text-slate-800" },
-  medium: { label: "Moyenne", color: "bg-blue-100 text-blue-800" },
-  high: { label: "Haute", color: "bg-orange-100 text-orange-800" },
-  urgent: { label: "Urgente", color: "bg-red-100 text-red-800" },
+  0: { label: "N/A", color: "bg-slate-100 text-slate-800" },
+  1: { label: "Basse", color: "bg-blue-100 text-blue-800" },
+  2: { label: "Moyenne", color: "bg-yellow-100 text-yellow-800" },
+  3: { label: "Haute", color: "bg-orange-100 text-orange-800" },
+  4: { label: "Urgente", color: "bg-red-100 text-red-800" },
 };
 
 const statusMap = {
-  todo: { label: "À faire", variant: "secondary" as const },
-  in_progress: { label: "En cours", variant: "default" as const },
-  review: { label: "Revue", variant: "outline" as const },
-  done: { label: "Terminé", variant: "outline" as const },
+  BACKLOG: { label: "Backlog", variant: "secondary" as const },
+  TODO: { label: "À faire", variant: "secondary" as const },
+  IN_PROGRESS: { label: "En cours", variant: "default" as const },
+  PAUSED: { label: "En pause", variant: "outline" as const },
+  DONE: { label: "Terminé", variant: "outline" as const },
+  CANCELED: { label: "Annulé", variant: "destructive" as const },
 };
 
 export function TasksTable({ tasks }: { tasks: any[] }) {
