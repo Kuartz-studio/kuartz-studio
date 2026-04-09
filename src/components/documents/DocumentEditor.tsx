@@ -8,7 +8,7 @@ import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-export function DocumentEditor({ document }: { document: any }) {
+export function DocumentEditor({ document, projectSlug }: { document: any, projectSlug?: string }) {
   const [title, setTitle] = useState(document.title);
   const [content, setContent] = useState(document.content || "");
   const [isPending, startTransition] = useTransition();

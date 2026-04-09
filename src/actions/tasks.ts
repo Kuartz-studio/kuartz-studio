@@ -55,7 +55,7 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
   }
 }
 
-export async function updateTaskAssigneesAction(taskId: string, assignees: string[], projectSlug: string) {
+export async function updateTaskAssigneesAction(taskId: string, assignees: string[]) {
   const session = await verifySession();
   if (!session || (session.role !== "admin" && session.role !== "employee")) {
     return { error: "Non autorisé" };
@@ -65,16 +65,31 @@ export async function updateTaskAssigneesAction(taskId: string, assignees: strin
   if (assignees.length > 0) {
     await db.insert(taskAssignees).values(assignees.map(userId => ({ taskId, userId })));
   }
-  revalidatePath(`/projects/${projectSlug}`);
+  revalidatePath(`/tasks`);
+  revalidatePath(`/projects/[slug]`, 'page');
   return { success: true };
 }
 
-export async function updateTaskStatusAction(taskId: string, status: "BACKLOG"|"TODO"|"IN_PROGRESS"|"PAUSED"|"DONE"|"CANCELED", projectSlug: string) {
+export async function updateTaskStatusAction(taskId: string, status: "BACKLOG"|"TODO"|"IN_PROGRESS"|"PAUSED"|"DONE"|"CANCELED") {
   const session = await verifySession();
   if (!session || (session.role !== "admin" && session.role !== "employee")) {
     return { error: "Non autorisé" };
   }
   await db.update(tasks).set({ status }).where(eq(tasks.id, taskId));
   await logActivity({ type: "task_status_changed", entityType: "task", entityId: taskId, metadata: { status } });
-  revalidatePath(`/projects/${projectSlug}`);
+  revalidatePath(`/tasks`);
+  revalidatePath(`/projects/[slug]`, 'page');
+}
+
+export async function updateTaskAction(taskId: string, payload: { title?: string; priority?: number; targetDate?: Date | null }) {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) {
+    return { error: "Non autorisé" };
+  }
+  await db.update(tasks).set(payload).where(eq(tasks.id, taskId));
+  
+  // if title changed, log it? Optional. We log status explicitly.
+  revalidatePath(`/tasks`);
+  revalidatePath(`/projects/[slug]`, 'page');
+  return { success: true };
 }

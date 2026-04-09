@@ -16,8 +16,8 @@ export default async function GlobalTasksPage({
   const priority = params.priority as string | undefined;
   const tag = params.tag as string | undefined;
 
-  const allProjects = await db.select({ id: projects.id, name: projects.name }).from(projects);
-  const allUsers = await db.select({ id: users.id, name: users.name }).from(users);
+  const allProjects = await db.select({ id: projects.id, name: projects.name, slug: projects.slug }).from(projects);
+  const allUsers = await db.select({ id: users.id, name: users.name, email: users.email, avatarUrl: users.avatarUrl, role: users.role }).from(users);
   
   const allTagsRows = await db.select({ name: dbTags.name }).from(dbTags);
   const tags: string[] = Array.from(new Set(allTagsRows.map(t => t.name)));
@@ -61,7 +61,42 @@ export default async function GlobalTasksPage({
     query = query.where(and(...conditions));
   }
   
-  const filteredTasks = await query.orderBy(desc(tasks.issueNumber));
+  const fetchedTasks = await query.orderBy(desc(tasks.issueNumber));
+
+  const fetchedTaskIds = fetchedTasks.length > 0 ? fetchedTasks.map(t => t.id) : ["NONE"];
+
+  const [allTaskAssignees, allTaskTags] = await Promise.all([
+    db.select().from(taskAssignees).where(inArray(taskAssignees.taskId, fetchedTaskIds)),
+    db.select().from(taskTags).where(inArray(taskTags.taskId, fetchedTaskIds))
+  ]);
+  
+  const allTagsWithColor = await db.select().from(dbTags);
+
+  const enrichedTasks = fetchedTasks.map(task => {
+    const project = allProjects.find(p => p.id === task.projectId);
+    
+    // Aggregate Assignees
+    const tAssigneesIds = allTaskAssignees.filter(ta => ta.taskId === task.id).map(ta => ta.userId);
+    const usersForTask = allUsers.filter(u => tAssigneesIds.includes(u.id));
+    const assignees = usersForTask.map(u => ({ user: u }));
+
+    // Aggregate Tags
+    const tTagIds = allTaskTags.filter(tt => tt.taskId === task.id).map(tt => tt.tagId);
+    const tagsForTask = allTagsWithColor.filter(t => tTagIds.includes(t.id));
+    const tags = tagsForTask.map(t => ({ tag: t }));
+
+    return {
+      ...task,
+      targetDate: task.targetDate ? task.targetDate.toISOString() : null,
+      projectName: project?.name || "Projet Inconnu",
+      projectSlug: project?.slug || "",
+      assignees,
+      tags
+    };
+  });
+
+  // User array expects avatarUrl and email for AssigneeCell
+  const usersForDropdown = allUsers.map(u => ({ ...u, email: "", avatarUrl: null, role: "employee" }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,7 +109,12 @@ export default async function GlobalTasksPage({
         <TaskFilters projects={allProjects} users={allUsers} tags={tags} />
       </div>
 
-      <TasksTable tasks={filteredTasks} />
+      <TasksTable 
+        tasks={enrichedTasks}
+        allTags={allTagsWithColor}
+        allUsers={usersForDropdown}
+        allProjects={allProjects}
+      />
     </div>
   );
 }

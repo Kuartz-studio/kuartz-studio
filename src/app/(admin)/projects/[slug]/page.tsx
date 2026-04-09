@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { projects, tasks, documents } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { projects, tasks, documents, users, taskAssignees, taskTags, tags as dbTags } from "@/db/schema";
+import { eq, desc, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,40 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const projectTasks = await db.select().from(tasks).where(eq(tasks.projectId, project.id)).orderBy(desc(tasks.issueNumber));
   const projectDocs = await db.select().from(documents).where(eq(documents.projectId, project.id)).orderBy(desc(documents.updatedAt));
+
+  const fetchedTaskIds = projectTasks.length > 0 ? projectTasks.map(t => t.id) : ["NONE"];
+
+  const [allTaskAssignees, allTaskTags, allUsersRows, allTagsWithColor] = await Promise.all([
+    db.select().from(taskAssignees).where(inArray(taskAssignees.taskId, fetchedTaskIds)),
+    db.select().from(taskTags).where(inArray(taskTags.taskId, fetchedTaskIds)),
+    db.select({ id: users.id, name: users.name, email: users.email, avatarUrl: users.avatarUrl, role: users.role }).from(users),
+    db.select().from(dbTags)
+  ]);
+
+  const enrichedTasks = projectTasks.map(task => {
+    // For project tasks, they are all from the same project
+    
+    // Aggregate Assignees
+    const tAssigneesIds = allTaskAssignees.filter(ta => ta.taskId === task.id).map(ta => ta.userId);
+    const usersForTask = allUsersRows.filter(u => tAssigneesIds.includes(u.id));
+    const assignees = usersForTask.map(u => ({ user: u }));
+
+    // Aggregate Tags
+    const tTagIds = allTaskTags.filter(tt => tt.taskId === task.id).map(tt => tt.tagId);
+    const tagsForTask = allTagsWithColor.filter(t => tTagIds.includes(t.id));
+    const tags = tagsForTask.map(t => ({ tag: t }));
+
+    return {
+      ...task,
+      targetDate: task.targetDate ? task.targetDate.toISOString() : null,
+      projectName: project.name,
+      projectSlug: project.slug,
+      assignees,
+      tags
+    };
+  });
+
+  const usersForDropdown = allUsersRows.map(u => ({ ...u, email: "", avatarUrl: null, role: "employee" }));
 
   const safeDeleteAction = deleteProjectAction.bind(null, project.id);
 
@@ -91,7 +125,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <h2 className="text-2xl font-bold tracking-tight">Tâches</h2>
             <NewTaskDialog projectId={project.id} />
           </div>
-          <TasksTable tasks={projectTasks} />
+          <TasksTable 
+            tasks={enrichedTasks} 
+            allTags={allTagsWithColor} 
+            allUsers={usersForDropdown} 
+            allProjects={[project]} 
+          />
         </TabsContent>
 
         <TabsContent value="docs" className="flex flex-col gap-4 focus-visible:outline-none">
