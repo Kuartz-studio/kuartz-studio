@@ -44,8 +44,8 @@ User
 ├── id (text, PK, cuid2)
 ├── email (text, NOT NULL, UNIQUE)
 ├── name (text, NOT NULL)
-├── passwordHash (text, NOT NULL)
-├── role (text: 'admin' | 'client')
+├── passwordHash (text) // Nullable (clients n'ont pas de mot de passe)
+├── role (text: 'admin' | 'employee' | 'customer')
 ├── createdAt (integer, timestamp)
 └── updatedAt (integer, timestamp)
 
@@ -184,7 +184,10 @@ src/
 
 ### Auth custom
 - ZERO bibliothèque d'auth (pas de NextAuth, Clerk, Lucia, Better Auth, Auth.js)
-- Sessions signées avec HMAC-SHA256 via `crypto.subtle` (Web Crypto API)
+- ❌ AUCUNE interface de création de compte public (`/register`). Les comptes sont pré-référencés.
+- Les clients (customer) n'ont PAS besoin de mot de passe (digicode). L'accès se fait par une session magique / passless authentifiée sur leur email.
+- Les admins/salariés utilisent un code PIN (digicode, 6 chiffres) qui doit être haché publiquement.
+- Sessions signées avec HMAC-SHA256 via `crypto.subtle` ou `crypto` (node built-in)
 - Session stockée dans un cookie HttpOnly, Secure, SameSite=Lax
 - Le middleware est la PREMIÈRE ligne de défense, PAS la seule
 - TOUJOURS re-vérifier la session dans les Server Components et Server Actions (defense in depth)
@@ -222,6 +225,10 @@ src/
 - `useReducedMotion` / `MotionConfig reducedMotion="user"` pour l'accessibilité
 - Animations subtiles et rapides (< 300ms) — pas de flashy
 
+### UI et Typographie
+- **Font principale** : Geist (`font-sans`)
+- **Font monospace** : Geist Mono (`font-mono`) pour les éléments spécifiques/techniques.
+
 ## Ce qu'il ne faut JAMAIS faire
 
 ### Architecture
@@ -247,6 +254,10 @@ src/
 - ❌ PAS de requêtes DB directes dans les composants — passer par `db/queries/`
 - ❌ PAS de secrets/clés dans le code côté client
 - ❌ PAS de console.log en production — utiliser un logger structuré si nécessaire
+
+### Git & Workflow
+- ❌ NE JAMAIS faire de `git push` sans l'autorisation explicite de l'utilisateur.
+- ❌ Toujours attendre la demande de l'utilisateur avant de pousser le code.
 
 ## Mindset d'évolution incrémentale
 
