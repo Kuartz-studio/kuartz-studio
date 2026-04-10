@@ -12,7 +12,7 @@ async function main() {
       id: u.id,
       name: u.name,
       email: u.email,
-      avatarUrl: u.avatarUrl,
+      avatarBase64: u.avatarUrl ?? null,
       role: u.role.toLowerCase() as "admin" | "employee" | "customer",
     }).onConflictDoNothing();
   }
@@ -24,7 +24,7 @@ async function main() {
       name: p.name,
       slug: p.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
       url: p.url,
-      logoUrl: p.logoUrl,
+      logoBase64: p.logoUrl ?? null,
       priority: p.priority,
       targetDate: p.targetDate ? new Date(p.targetDate) : null,
       createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),

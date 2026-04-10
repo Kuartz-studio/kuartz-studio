@@ -6,15 +6,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { AvatarCustom, PriorityIcon } from "@/components/ui/table-icons";
-import { updateProjectAction, updateProjectUsersAction } from "@/actions/projects";
+import { updateProjectAction, updateProjectUsersAction, updateProjectLogoAction } from "@/actions/projects";
+import { ImageUpload } from "@/components/shared/ImageUpload";
 import Link from "next/link";
 
 // Types
-interface ProjectUser { id: string; name: string | null; avatarUrl: string | null; role: string; }
-interface UserRecord { id: string; name: string; avatarUrl: string | null; role: string; }
+interface ProjectUser { id: string; name: string | null; avatarBase64: string | null; role: string; }
+interface UserRecord { id: string; name: string; avatarBase64: string | null; role: string; }
 interface ProjectRow {
   id: string; name: string; slug: string; description: string | null;
-  url: string | null; logoUrl: string | null; priority: number | null;
+  url: string | null; logoBase64: string | null; priority: number | null;
   users: ProjectUser[];
 }
 
@@ -178,7 +179,7 @@ function UsersCell({ projectUsers, allUsers, onSave }: { projectUsers: ProjectUs
       <PopoverTrigger className="flex items-center gap-1 cursor-pointer outline-none">
         {projectUsers.length > 0 ? (
           <div className="flex -space-x-1">
-            {projectUsers.slice(0, 4).map((u) => <AvatarCustom key={u.id} name={u.name} avatarUrl={u.avatarUrl} />)}
+            {projectUsers.slice(0, 4).map((u) => <AvatarCustom key={u.id} name={u.name} avatarBase64={u.avatarBase64} />)}
             {projectUsers.length > 4 && (
               <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[var(--color-muted)] text-[9px] font-bold text-[var(--color-muted-foreground)] border border-[var(--color-border)]">
                 +{projectUsers.length - 4}
@@ -200,7 +201,7 @@ function UsersCell({ projectUsers, allUsers, onSave }: { projectUsers: ProjectUs
               {allUsers.map((user) => (
                 <CommandItem key={user.id} onSelect={() => toggle(user)}>
                   <div className="flex items-center gap-2 flex-1">
-                    <AvatarCustom name={user.name} avatarUrl={user.avatarUrl} />
+                    <AvatarCustom name={user.name} avatarBase64={user.avatarBase64} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{user.name}</p>
                       <p className="text-[10px] text-[var(--color-muted-foreground)] uppercase">{user.role}</p>
@@ -250,15 +251,13 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
             <tr key={project.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)]/40 transition-colors group">
               {/* Logo */}
               <td className="px-4 py-2">
-                <Link href={`/projects/${project.slug}`}>
-                  {project.logoUrl ? (
-                    <img src={project.logoUrl} alt={project.name} className="h-8 w-8 rounded object-cover border border-[var(--color-border)]" />
-                  ) : (
-                    <div className="flex items-center justify-center h-8 w-8 rounded bg-[var(--color-muted)] border border-[var(--color-border)] shrink-0">
-                      <FolderKanban className="h-4 w-4 text-[var(--color-muted-foreground)] opacity-50" />
-                    </div>
-                  )}
-                </Link>
+                <ImageUpload
+                  currentImage={project.logoBase64}
+                  onUpload={async (base64) => { await updateProjectLogoAction(project.id, base64); }}
+                  shape="square"
+                  compact
+                  fallbackLabel={project.name}
+                />
               </td>
 
               {/* Projet name (editable) */}

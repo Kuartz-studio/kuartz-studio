@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Filter, Check, X, CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { Filter, Check, X, CalendarIcon, Plus, Trash2, FolderKanban } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,16 +16,16 @@ import { createTagAction, deleteTagAction, updateTagColorAction, updateTaskTagsA
 // Types
 export interface DbTag { id: string; name: string; color: string | null; projectId: string; }
 export interface TaskTag { tag: DbTag; }
-export interface UserRecord { id: string; name: string; email: string; avatarUrl: string | null; role: string; }
+export interface UserRecord { id: string; name: string; email: string; avatarBase64: string | null; role: string; }
 export interface TaskAssignee { user: UserRecord; }
 export interface EnrichedTask {
   id: string; issueNumber: number | null; title: string; description: string | null;
   status: string; priority: number; targetDate: string | null;
-  projectId: string; projectName: string; projectSlug: string;
+  projectId: string; projectName: string; projectSlug: string; projectLogoBase64: string | null;
   assignees: TaskAssignee[];
   tags: TaskTag[];
 }
-interface ProjectRecord { id: string; name: string; slug: string; }
+interface ProjectRecord { id: string; name: string; slug: string; logoBase64: string | null; }
 
 // Constants
 const STATUS_OPTIONS = [
@@ -358,7 +358,7 @@ function AssigneeCell({ assignees, allUsers, onSave }: { assignees: TaskAssignee
         {assignees.length > 0 ? (
             <>
               <div className="flex -space-x-1">
-                {assignees.slice(0, 3).map((a) => <AvatarCustom key={a.user.id} name={a.user.name} avatarUrl={a.user.avatarUrl} />)}
+                {assignees.slice(0, 3).map((a) => <AvatarCustom key={a.user.id} name={a.user.name} avatarBase64={a.user.avatarBase64} />)}
                 {assignees.length > 3 && <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[var(--color-muted)] text-[9px] font-bold text-[var(--color-muted-foreground)] border border-[var(--color-border)]">+{assignees.length - 3}</span>}
               </div>
               {assignees.length === 1 && assignees[0] && (
@@ -382,7 +382,7 @@ function AssigneeCell({ assignees, allUsers, onSave }: { assignees: TaskAssignee
               {allUsers.map((user) => (
                 <CommandItem key={user.id} onSelect={() => toggle(user)}>
                   <div className="flex items-center gap-2 flex-1">
-                    <AvatarCustom name={user.name} avatarUrl={user.avatarUrl} />
+                    <AvatarCustom name={user.name} avatarBase64={user.avatarBase64} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{user.name}</p>
                     </div>
@@ -406,12 +406,15 @@ export function TasksTable({
   tasks,
   allTags,
   allUsers,
-  allProjects
+  allProjects,
+  projectUserMap,
 }: { 
   tasks: EnrichedTask[]; 
   allTags: DbTag[];
   allUsers: UserRecord[];
   allProjects: ProjectRecord[];
+  /** Map of projectId → userId[] for project membership filtering */
+  projectUserMap: Record<string, string[]>;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -455,12 +458,14 @@ export function TasksTable({
 
                 {/* Projet */}
                 <td className="px-4 py-2.5">
-                  <div className="flex items-center gap-2 max-w-[150px]">
-                    <div className="flex items-center justify-center h-5 w-5 rounded-sm bg-[var(--color-muted)] border shrink-0 text-[10px] font-medium select-none">
-                      {task.projectName.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-[12px] text-[var(--color-foreground)] truncate">{task.projectName}</span>
-                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md bg-[var(--color-muted)] text-[var(--color-muted-foreground)] border border-[var(--color-border)] font-medium max-w-[160px]">
+                    {task.projectLogoBase64 ? (
+                      <img src={task.projectLogoBase64} alt="" className="h-4 w-4 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <FolderKanban size={12} className="opacity-50 shrink-0" />
+                    )}
+                    <span className="truncate">{task.projectName}</span>
+                  </span>
                 </td>
 
                 {/* Titre */}
@@ -510,7 +515,7 @@ export function TasksTable({
                 <td className="px-4 py-2.5">
                   <AssigneeCell 
                     assignees={task.assignees} 
-                    allUsers={allUsers} 
+                    allUsers={projectUserMap ? allUsers.filter(u => (projectUserMap[task.projectId] ?? []).includes(u.id)) : allUsers} 
                     onSave={(userIds) => startTransition(() => { updateTaskAssigneesAction(task.id, userIds) })} 
                   />
                 </td>

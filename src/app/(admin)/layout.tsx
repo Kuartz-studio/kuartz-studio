@@ -50,8 +50,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-3 overflow-hidden">
               <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border bg-sidebar-accent shadow-sm flex items-center justify-center">
-                {currentUser?.avatarUrl ? (
-                  <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                {currentUser?.avatarBase64 ? (
+                  <img src={currentUser.avatarBase64} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <span className="font-medium text-xs text-sidebar-foreground">
                     {currentUser?.name?.charAt(0) || "U"}

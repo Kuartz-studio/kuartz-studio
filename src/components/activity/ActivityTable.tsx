@@ -60,12 +60,12 @@ type ActivityRow = {
 // ---------------------------------------------------------------------------
 // Avatar
 // ---------------------------------------------------------------------------
-function AvatarMini({ name, avatarUrl }: { name: string | null; avatarUrl: string | null }) {
+function AvatarMini({ name, avatarSrc }: { name: string | null; avatarSrc: string | null }) {
   const initial = name?.charAt(0)?.toUpperCase() ?? "?";
   return (
     <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-[var(--color-border)] bg-[var(--color-muted)] flex items-center justify-center">
-      {avatarUrl ? (
-        <img src={avatarUrl} alt={name ?? ""} className="w-full h-full object-cover" />
+      {avatarSrc ? (
+        <img src={avatarSrc} alt={name ?? ""} className="w-full h-full object-cover" />
       ) : (
         <span className="text-[10px] font-bold text-[var(--color-muted-foreground)]">{initial}</span>
       )}
@@ -187,7 +187,7 @@ export function ActivityTable({ activities }: { activities: ActivityRow[] }) {
                     {/* User */}
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
-                        <AvatarMini name={activity.userName} avatarUrl={activity.userAvatar} />
+                        <AvatarMini name={activity.userName} avatarSrc={activity.userAvatar} />
                         <span className="text-[13px] truncate max-w-[120px]">{activity.userName ?? "Système"}</span>
                       </div>
                     </td>

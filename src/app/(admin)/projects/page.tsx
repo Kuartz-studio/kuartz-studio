@@ -11,10 +11,10 @@ import { desc } from "drizzle-orm";
 
 export default async function ProjectsListPage() {
   const projectsWithUsers = await getProjectsWithUsers();
-  const allUsers = await db.select({ id: users.id, name: users.name, avatarUrl: users.avatarUrl, role: users.role }).from(users);
+  const allUsers = await db.select({ id: users.id, name: users.name, avatarBase64: users.avatarBase64, role: users.role }).from(users);
 
   // Map to the shape expected by ProjectsTable
-  const usersForTable = allUsers.map(u => ({ id: u.id, name: u.name, avatarUrl: u.avatarUrl, role: u.role }));
+  const usersForTable = allUsers.map(u => ({ id: u.id, name: u.name, avatarBase64: u.avatarBase64, role: u.role }));
 
   return (
     <div className="flex flex-col gap-8 flex-1">

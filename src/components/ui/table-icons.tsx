@@ -92,10 +92,10 @@ export function PriorityIcon({ value }: { value: number }) {
   );
 }
 
-export function AvatarCustom({ name, avatarUrl, isMe }: { name: string | null; avatarUrl?: string | null; isMe?: boolean }) {
+export function AvatarCustom({ name, avatarBase64, isMe }: { name: string | null; avatarBase64?: string | null; isMe?: boolean }) {
   const safeName = name || 'User';
-  const inner = avatarUrl ? (
-    <img src={avatarUrl} alt={safeName} title={safeName} className="h-full w-full rounded-full object-cover shrink-0" />
+  const inner = avatarBase64 ? (
+    <img src={avatarBase64} alt={safeName} title={safeName} className="h-full w-full rounded-full object-cover shrink-0" />
   ) : (() => {
     let hash = 0;
     for (let i = 0; i < safeName.length; i++) hash = safeName.charCodeAt(i) + ((hash << 5) - hash);

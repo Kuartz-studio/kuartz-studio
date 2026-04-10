@@ -73,7 +73,7 @@ export async function getTaskComments(taskId: string) {
       createdAt: comments.createdAt,
       authorId: comments.authorId,
       authorName: users.name,
-      authorAvatar: users.avatarUrl,
+      authorAvatar: users.avatarBase64,
     })
     .from(comments)
     .leftJoin(users, eq(comments.authorId, users.id))

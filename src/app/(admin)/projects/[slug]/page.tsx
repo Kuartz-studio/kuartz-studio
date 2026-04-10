@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { projects, tasks, documents, users, taskAssignees, taskTags, tags as dbTags } from "@/db/schema";
+import { projects, tasks, documents, users, taskAssignees, taskTags, tags as dbTags, projectToUser } from "@/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +26,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const [allTaskAssignees, allTaskTags, allUsersRows, allTagsWithColor] = await Promise.all([
     db.select().from(taskAssignees).where(inArray(taskAssignees.taskId, fetchedTaskIds)),
     db.select().from(taskTags).where(inArray(taskTags.taskId, fetchedTaskIds)),
-    db.select({ id: users.id, name: users.name, email: users.email, avatarUrl: users.avatarUrl, role: users.role }).from(users),
+    db.select({ id: users.id, name: users.name, email: users.email, avatarBase64: users.avatarBase64, role: users.role }).from(users),
     db.select().from(dbTags)
   ]);
 
@@ -48,12 +48,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       targetDate: task.targetDate ? task.targetDate.toISOString() : null,
       projectName: project.name,
       projectSlug: project.slug,
+      projectLogoBase64: project.logoBase64,
       assignees,
       tags
     };
   });
 
-  const usersForDropdown = allUsersRows.map(u => ({ ...u, email: "", avatarUrl: null, role: "employee" }));
+  const usersForDropdown = allUsersRows.map(u => ({ ...u, email: "", avatarBase64: null, role: "employee" }));
+
+  // Build projectUserMap for this project
+  const projectMembers = await db.select({ userId: projectToUser.userId }).from(projectToUser).where(eq(projectToUser.projectId, project.id));
+  const projectUserMap: Record<string, string[]> = {
+    [project.id]: projectMembers.map(pm => pm.userId),
+  };
 
   const safeDeleteAction = deleteProjectAction.bind(null, project.id);
 
@@ -130,6 +137,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             allTags={allTagsWithColor} 
             allUsers={usersForDropdown} 
             allProjects={[project]} 
+            projectUserMap={projectUserMap}
           />
         </TabsContent>
 

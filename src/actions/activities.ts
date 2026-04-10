@@ -49,7 +49,7 @@ export async function getRecentActivities(limit = 50) {
       createdAt: activities.createdAt,
       userId: activities.userId,
       userName: users.name,
-      userAvatar: users.avatarUrl,
+      userAvatar: users.avatarBase64,
     })
     .from(activities)
     .leftJoin(users, eq(activities.userId, users.id))

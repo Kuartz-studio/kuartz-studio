@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { tasks, projects, users, taskAssignees, taskTags, tags as dbTags } from "@/db/schema";
+import { tasks, projects, users, taskAssignees, taskTags, tags as dbTags, projectToUser } from "@/db/schema";
 import { desc, eq, like, or, and, inArray } from "drizzle-orm";
 import { TasksTable } from "@/components/tasks/TasksTable";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
@@ -17,8 +17,8 @@ export default async function GlobalTasksPage({
   const priority = params.priority as string | undefined;
   const tag = params.tag as string | undefined;
 
-  const allProjects = await db.select({ id: projects.id, name: projects.name, slug: projects.slug }).from(projects);
-  const allUsers = await db.select({ id: users.id, name: users.name, email: users.email, avatarUrl: users.avatarUrl, role: users.role }).from(users);
+  const allProjects = await db.select({ id: projects.id, name: projects.name, slug: projects.slug, logoBase64: projects.logoBase64 }).from(projects);
+  const allUsers = await db.select({ id: users.id, name: users.name, email: users.email, avatarBase64: users.avatarBase64, role: users.role }).from(users);
   
   const allTagsRows = await db.select({ name: dbTags.name }).from(dbTags);
   const tags: string[] = Array.from(new Set(allTagsRows.map(t => t.name)));
@@ -91,13 +91,22 @@ export default async function GlobalTasksPage({
       targetDate: task.targetDate ? task.targetDate.toISOString() : null,
       projectName: project?.name || "Projet Inconnu",
       projectSlug: project?.slug || "",
+      projectLogoBase64: project?.logoBase64 ?? null,
       assignees,
       tags
     };
   });
 
-  // User array expects avatarUrl and email for AssigneeCell
-  const usersForDropdown = allUsers.map(u => ({ id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl, role: u.role }));
+  // User array expects avatarBase64 and email for AssigneeCell
+  const usersForDropdown = allUsers.map(u => ({ id: u.id, name: u.name, email: u.email, avatarBase64: u.avatarBase64, role: u.role }));
+
+  // Build projectId → userId[] map for project-scoped assignees
+  const allProjectUsers = await db.select({ projectId: projectToUser.projectId, userId: projectToUser.userId }).from(projectToUser);
+  const projectUserMap: Record<string, string[]> = {};
+  for (const pu of allProjectUsers) {
+    if (!projectUserMap[pu.projectId]) projectUserMap[pu.projectId] = [];
+    projectUserMap[pu.projectId]!.push(pu.userId);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -118,6 +127,7 @@ export default async function GlobalTasksPage({
         allTags={allTagsWithColor}
         allUsers={usersForDropdown}
         allProjects={allProjects}
+        projectUserMap={projectUserMap}
       />
     </div>
   );

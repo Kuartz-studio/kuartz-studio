@@ -8,16 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AvatarCustom } from "@/components/ui/table-icons";
-import { updateUserAction, updateUserProjectsAction, deleteUserAction } from "@/actions/users";
+import { updateUserAction, updateUserProjectsAction, deleteUserAction, updateUserAvatarAction } from "@/actions/users";
+import { ImageUpload } from "@/components/shared/ImageUpload";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-interface UserProject { id: string; name: string | null; slug: string | null; }
-interface ProjectRecord { id: string; name: string; slug: string; }
+interface UserProject { id: string; name: string | null; slug: string | null; logoBase64?: string | null; }
+interface ProjectRecord { id: string; name: string; slug: string; logoBase64: string | null; }
 interface UserRow {
   id: string; name: string; email: string; role: string;
-  avatarUrl: string | null;
+  avatarBase64: string | null;
   projects: UserProject[];
 }
 
@@ -133,7 +134,11 @@ function ProjectsCell({ userProjects, allProjects, isAdmin, onSave }: {
                 key={p.id}
                 className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-[var(--color-muted)] text-[var(--color-muted-foreground)] border border-[var(--color-border)] font-medium"
               >
-                <FolderKanban size={10} className="opacity-50" />
+                {p.logoBase64 ? (
+                  <img src={p.logoBase64} alt="" className="h-3.5 w-3.5 rounded-full object-cover shrink-0" />
+                ) : (
+                  <FolderKanban size={10} className="opacity-50" />
+                )}
                 {p.name}
               </span>
             ))}
@@ -153,7 +158,11 @@ function ProjectsCell({ userProjects, allProjects, isAdmin, onSave }: {
               {allProjects.map((project) => (
                 <CommandItem key={project.id} onSelect={() => toggle(project)}>
                   <div className="flex items-center gap-2 flex-1">
-                    <FolderKanban size={14} className="opacity-50 shrink-0" />
+                    {project.logoBase64 ? (
+                      <img src={project.logoBase64} alt="" className="h-4 w-4 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <FolderKanban size={14} className="opacity-50 shrink-0" />
+                    )}
                     <span className="text-xs font-medium truncate">{project.name}</span>
                   </div>
                   {currentIds.has(project.id) && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-[var(--primary)]" />}
@@ -214,7 +223,13 @@ export function UsersTable({ users, allProjects }: { users: UserRow[]; allProjec
               <tr key={user.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)]/40 transition-colors group">
                 {/* Avatar */}
                 <td className="px-4 py-2">
-                  <AvatarCustom name={user.name} avatarUrl={user.avatarUrl} />
+                  <ImageUpload
+                    currentImage={user.avatarBase64}
+                    onUpload={async (base64) => { await updateUserAvatarAction(user.id, base64); }}
+                    shape="circle"
+                    compact
+                    fallbackLabel={user.name}
+                  />
                 </td>
 
                 {/* Nom (editable) */}

@@ -5,6 +5,7 @@ import { projects, projectToUser, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
 import { insertProjectSchema } from "@/lib/validators/projects";
+import { base64ImageSchema } from "@/lib/validators/image";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { ActionState } from "@/types/actions";
@@ -72,7 +73,7 @@ export async function updateProjectUsersAction(projectId: string, userIds: strin
 export async function getProjectsWithUsers() {
   const allProjects = await db.select().from(projects);
   const allLinks = await db
-    .select({ projectId: projectToUser.projectId, userId: projectToUser.userId, role: projectToUser.role, userName: users.name, userAvatar: users.avatarUrl })
+    .select({ projectId: projectToUser.projectId, userId: projectToUser.userId, role: projectToUser.role, userName: users.name, userAvatar: users.avatarBase64 })
     .from(projectToUser)
     .leftJoin(users, eq(projectToUser.userId, users.id));
 
@@ -81,9 +82,21 @@ export async function getProjectsWithUsers() {
     users: allLinks.filter(l => l.projectId === p.id).map(l => ({
       id: l.userId,
       name: l.userName,
-      avatarUrl: l.userAvatar,
+      avatarBase64: l.userAvatar,
       role: l.role,
     })),
   }));
+}
+
+export async function updateProjectLogoAction(projectId: string, base64: string) {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) return;
+
+  const parsed = base64ImageSchema.safeParse(base64);
+  if (!parsed.success) return;
+
+  await db.update(projects).set({ logoBase64: parsed.data }).where(eq(projects.id, projectId));
+  revalidatePath("/projects");
+  revalidatePath("/tasks");
 }
 

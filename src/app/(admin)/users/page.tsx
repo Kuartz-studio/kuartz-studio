@@ -7,22 +7,23 @@ import { UsersTable } from "@/components/users/UsersTable";
 
 export default async function UsersListPage() {
   const allUsers = await db.select().from(users);
-  const allProjects = await db.select({ id: projects.id, name: projects.name, slug: projects.slug }).from(projects);
+  const allProjects = await db.select({ id: projects.id, name: projects.name, slug: projects.slug, logoBase64: projects.logoBase64 }).from(projects);
   const allLinks = await db
     .select({
       userId: projectToUser.userId,
       projectId: projectToUser.projectId,
       projectName: projects.name,
       projectSlug: projects.slug,
+      projectLogo: projects.logoBase64,
     })
     .from(projectToUser)
     .leftJoin(projects, eq(projectToUser.projectId, projects.id));
 
   // Group projects by user
-  const userProjects = new Map<string, { id: string; name: string | null; slug: string | null }[]>();
+  const userProjects = new Map<string, { id: string; name: string | null; slug: string | null; logoBase64: string | null }[]>();
   for (const link of allLinks) {
     const existing = userProjects.get(link.userId) ?? [];
-    existing.push({ id: link.projectId, name: link.projectName, slug: link.projectSlug });
+    existing.push({ id: link.projectId, name: link.projectName, slug: link.projectSlug, logoBase64: link.projectLogo });
     userProjects.set(link.userId, existing);
   }
 
@@ -31,7 +32,7 @@ export default async function UsersListPage() {
     name: u.name,
     email: u.email,
     role: u.role,
-    avatarUrl: u.avatarUrl,
+    avatarBase64: u.avatarBase64,
     projects: userProjects.get(u.id) ?? [],
   }));
 

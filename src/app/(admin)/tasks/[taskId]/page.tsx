@@ -35,11 +35,11 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ tas
   const [project] = await db.select({ id: projects.id, name: projects.name, slug: projects.slug }).from(projects).where(eq(projects.id, task.projectId)).limit(1);
 
   // Get creator
-  const [creator] = await db.select({ name: users.name, avatarUrl: users.avatarUrl }).from(users).where(eq(users.id, task.createdByUserId)).limit(1);
+  const [creator] = await db.select({ name: users.name, avatarBase64: users.avatarBase64 }).from(users).where(eq(users.id, task.createdByUserId)).limit(1);
 
   // Get assignees
   const assigneeRows = await db
-    .select({ name: users.name, avatarUrl: users.avatarUrl })
+    .select({ name: users.name, avatarBase64: users.avatarBase64 })
     .from(taskAssignees)
     .leftJoin(users, eq(taskAssignees.userId, users.id))
     .where(eq(taskAssignees.taskId, taskId));
