@@ -494,7 +494,7 @@ export function TasksTable({
 
                 {/* Statut */}
                 <td className="px-4 py-2.5">
-                  <StatusCell value={task.status} onSave={(v) => startTransition(() => { updateTaskStatusAction(task.id, v as any) })} />
+                  <StatusCell value={task.status} onSave={(v) => startTransition(() => { updateTaskStatusAction(task.id, v as "BACKLOG" | "TODO" | "IN_PROGRESS" | "PAUSED" | "DONE" | "CANCELED") })} />
                 </td>
 
                 {/* Priorité */}

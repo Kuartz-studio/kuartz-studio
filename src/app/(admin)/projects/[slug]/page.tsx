@@ -90,7 +90,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <div className="lg:col-span-2 flex flex-col gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Vue d'ensemble</CardTitle>
+              <CardTitle>Vue d&apos;ensemble</CardTitle>
             </CardHeader>
             <CardContent>
               {project.description ? (
@@ -150,7 +150,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <div className="bg-card rounded-md border flex flex-col divide-y">
             {projectDocs.length === 0 ? (
               <div className="text-center p-8 text-muted-foreground border-none">
-                Aucun document. Cliquez sur "Nouveau Document" pour commencer.
+                Aucun document. Cliquez sur &quot;Nouveau Document&quot; pour commencer.
               </div>
             ) : (
               projectDocs.map(doc => (

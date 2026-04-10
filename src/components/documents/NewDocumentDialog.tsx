@@ -23,6 +23,7 @@ export function NewDocumentDialog({ projectId, taskId, projects = [] }: Props) {
 
   useEffect(() => {
     if (state?.data?.success) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(false);
     }
   }, [state]);

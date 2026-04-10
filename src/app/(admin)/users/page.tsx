@@ -41,7 +41,7 @@ export default async function UsersListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Utilisateurs</h1>
-          <p className="text-muted-foreground mt-1">Gérez l'équipe Kuartz et tous vos clients.</p>
+          <p className="text-muted-foreground mt-1">Gérez l&apos;équipe Kuartz et tous vos clients.</p>
         </div>
         <Button className="gap-2">
           <UserPlus size={16} /> Ajouter

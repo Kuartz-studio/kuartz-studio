@@ -51,7 +51,7 @@ export default function NewProjectPage() {
             <div className="grid gap-2">
               <Label htmlFor="slug">Slug (URL)</Label>
               <Input id="slug" name="slug" placeholder="ex: refonte-ecommerce" className="font-mono text-sm" required />
-              <p className="text-xs text-muted-foreground">Ce slug sera utilisé dans l'URL. Lettres minuscules, chiffres et tirets uniquement.</p>
+              <p className="text-xs text-muted-foreground">Ce slug sera utilisé dans l&apos;URL. Lettres minuscules, chiffres et tirets uniquement.</p>
               {state?.fieldErrors?.slug && (
                 <span className="text-xs text-destructive">{state.fieldErrors.slug[0]}</span>
               )}

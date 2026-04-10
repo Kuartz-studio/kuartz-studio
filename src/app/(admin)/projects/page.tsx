@@ -37,7 +37,7 @@ export default async function ProjectsListPage() {
             <FolderKanban size={48} className="text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-semibold mb-1">Aucun projet</h3>
             <p className="text-muted-foreground text-sm max-w-sm mb-4">
-              Vous n'avez pas encore créé de projet. Commencez par en ajouter un pour structurer le travail.
+              Vous n&apos;avez pas encore créé de projet. Commencez par en ajouter un pour structurer le travail.
             </p>
             <Link href="/projects/new">
               <Button variant="outline">Créer un projet</Button>
