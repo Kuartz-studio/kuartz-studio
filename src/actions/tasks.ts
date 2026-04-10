@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { logActivity } from "./activities";
 import { notifyAdmins } from "./notifications";
+import type { ActionState } from "@/types/actions";
 
 const insertTaskSchema = z.object({
   projectId: z.string(),
@@ -17,11 +18,7 @@ const insertTaskSchema = z.object({
   priority: z.coerce.number().int().min(0).max(4).optional(),
 });
 
-export type ActionState<T = any> = {
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-  data?: T;
-};
+
 
 export async function createTaskAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
   const session = await verifySession();
@@ -37,20 +34,32 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
     const [project] = await db.select().from(projects).where(eq(projects.id, parsed.data.projectId)).limit(1);
     if (!project) return { error: "Projet introuvable" };
 
-    await db.insert(tasks).values({
+    // Resolve createdByUserId — session user may not exist in DB
+    let createdByUserId = session.userId;
+    const { users } = await import("@/db/schema");
+    const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.id, session.userId)).limit(1);
+    if (!existingUser) {
+      const [fallbackAdmin] = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin")).limit(1);
+      if (!fallbackAdmin) return { error: "Aucun utilisateur trouvé" };
+      createdByUserId = fallbackAdmin.id;
+    }
+
+    const [newTask] = await db.insert(tasks).values({
       projectId: parsed.data.projectId,
       title: parsed.data.title,
       description: parsed.data.description,
       status: parsed.data.status || "BACKLOG",
       priority: parsed.data.priority ?? 0,
-      createdByUserId: session.userId,
-    });
+      createdByUserId,
+    }).returning();
 
     revalidatePath(`/projects/${project.slug}`);
-    await logActivity({ type: "task_created", entityType: "task", entityId: parsed.data.projectId, entityTitle: parsed.data.title });
+    revalidatePath("/tasks");
+    await logActivity({ type: "task_created", entityType: "task", entityId: newTask?.id ?? parsed.data.projectId, entityTitle: parsed.data.title });
     await notifyAdmins({ type: "task_created", message: `Nouvelle tâche : ${parsed.data.title}`, linkTo: `/projects/${project.slug}`, excludeUserId: session.userId });
     return { data: { success: true } };
   } catch (error) {
+    console.error("[createTaskAction]", error);
     return { error: "Erreur serveur" };
   }
 }

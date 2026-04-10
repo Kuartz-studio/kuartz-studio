@@ -72,7 +72,7 @@ export function TaskAttachments({ taskId, initialAttachments }: { taskId: string
   };
 
   const getFormatInfo = (format: string) => {
-    return FORMAT_OPTIONS.find(f => f.value === format) || FORMAT_OPTIONS[FORMAT_OPTIONS.length - 1];
+    return FORMAT_OPTIONS.find(f => f.value === format) ?? { value: "other" as const, label: "Autre", icon: "📎" };
   };
 
   return (

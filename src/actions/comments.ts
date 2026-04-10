@@ -17,7 +17,7 @@ const insertCommentSchema = z.object({
 export type CommentActionState = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
-  data?: any;
+  data?: { success: boolean };
 };
 
 export async function createCommentAction(prevState: CommentActionState, formData: FormData): Promise<CommentActionState> {

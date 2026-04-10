@@ -2,7 +2,6 @@ import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core"
 import { projects } from "./projects";
 import { tasks } from "./tasks";
 import { users } from "./users";
-import { init } from "@paralleldrive/cuid2";
 
 const createId = () => crypto.randomUUID();
 

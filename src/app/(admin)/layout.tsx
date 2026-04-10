@@ -34,12 +34,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <NotificationBell notifications={myNotifs} unreadCount={unreadCount} />
         </div>
         <SidebarNav
-          items={[
-            { path: "/tasks", label: "Tâches", icon: <CheckSquare size={18} /> },
-            { path: "/projects", label: "Projets", icon: <FolderKanban size={18} /> },
-            { path: "/documents", label: "Documents", icon: <FileText size={18} /> },
-            { path: "/users", label: "Utilisateurs", icon: <Users size={18} /> },
-            { path: "/activity", label: "Activité", icon: <Activity size={18} /> },
+          groups={[
+            [
+              { path: "/tasks", label: "Tâches", icon: <CheckSquare size={18} /> },
+              { path: "/projects", label: "Projets", icon: <FolderKanban size={18} /> },
+              { path: "/users", label: "Utilisateurs", icon: <Users size={18} /> },
+            ],
+            [
+              { path: "/documents", label: "Documents", icon: <FileText size={18} /> },
+              { path: "/activity", label: "Activité", icon: <Activity size={18} /> },
+            ],
           ]}
         />
         <div className="flex flex-col border-t pt-4 mt-auto">

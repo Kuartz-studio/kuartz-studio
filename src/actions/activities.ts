@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { activities, users } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
+import { revalidatePath } from "next/cache";
 
 async function resolveUserId(sessionUserId: string): Promise<string | null> {
   const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.id, sessionUserId)).limit(1);
@@ -44,7 +45,9 @@ export async function getRecentActivities(limit = 50) {
       entityId: activities.entityId,
       entityTitle: activities.entityTitle,
       metadata: activities.metadata,
+      read: activities.read,
       createdAt: activities.createdAt,
+      userId: activities.userId,
       userName: users.name,
       userAvatar: users.avatarUrl,
     })
@@ -53,3 +56,18 @@ export async function getRecentActivities(limit = 50) {
     .orderBy(desc(activities.createdAt))
     .limit(limit);
 }
+
+export async function markActivityReadAction(activityId: string) {
+  const session = await verifySession();
+  if (!session) return;
+  await db.update(activities).set({ read: true }).where(eq(activities.id, activityId));
+  revalidatePath("/activity");
+}
+
+export async function markAllActivitiesReadAction() {
+  const session = await verifySession();
+  if (!session) return;
+  await db.update(activities).set({ read: true }).where(eq(activities.read, false));
+  revalidatePath("/activity");
+}
+

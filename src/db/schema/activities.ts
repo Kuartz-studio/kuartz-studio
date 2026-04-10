@@ -11,5 +11,6 @@ export const activities = sqliteTable("activity", {
   entityTitle: text("entity_title"), // Human-readable title for display
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   metadata: text("metadata"), // JSON string for extra context (field changed, old/new values, etc.)
+  read: integer("read", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });

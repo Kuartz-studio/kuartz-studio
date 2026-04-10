@@ -6,6 +6,7 @@ import { eq, and, desc, isNull } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import type { ActionState } from "@/types/actions";
 
 const insertDocumentSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
@@ -14,11 +15,7 @@ const insertDocumentSchema = z.object({
   taskId: z.string().optional(),     // If provided, auto-link via M2M
 });
 
-export type ActionState<T = any> = {
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-  data?: T;
-};
+
 
 async function resolveAuthorId(sessionUserId: string): Promise<string | null> {
   const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.id, sessionUserId)).limit(1);

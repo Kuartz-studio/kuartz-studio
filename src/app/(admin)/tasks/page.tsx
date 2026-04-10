@@ -3,6 +3,7 @@ import { tasks, projects, users, taskAssignees, taskTags, tags as dbTags } from 
 import { desc, eq, like, or, and, inArray } from "drizzle-orm";
 import { TasksTable } from "@/components/tasks/TasksTable";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
+import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 
 export default async function GlobalTasksPage({
   searchParams,
@@ -31,7 +32,7 @@ export default async function GlobalTasksPage({
   }
   
   if (priority) {
-    conditions.push(eq(tasks.priority, priority as any));
+    conditions.push(eq(tasks.priority, Number(priority)));
   }
 
   if (q) {
@@ -96,13 +97,16 @@ export default async function GlobalTasksPage({
   });
 
   // User array expects avatarUrl and email for AssigneeCell
-  const usersForDropdown = allUsers.map(u => ({ ...u, email: "", avatarUrl: null, role: "employee" }));
+  const usersForDropdown = allUsers.map(u => ({ id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl, role: u.role }));
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Tâches</h1>
-        <p className="text-muted-foreground">Vue globale de toutes les tâches du studio.</p>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">Tâches</h1>
+          <p className="text-muted-foreground">Vue globale de toutes les tâches du studio.</p>
+        </div>
+        <NewTaskDialog projects={allProjects} />
       </div>
 
       <div className="bg-card p-4 rounded-xl border flex flex-col gap-4">

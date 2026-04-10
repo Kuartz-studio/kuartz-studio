@@ -10,9 +10,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 
-export function NewTaskDialog({ projectId }: { projectId: string }) {
+type Project = { id: string; name: string; slug: string };
+
+export function NewTaskDialog({ projectId, projects }: { projectId?: string; projects?: Project[] }) {
   const [state, action, isPending] = useActionState(createTaskAction, {});
   const [open, setOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId ?? "");
 
   useEffect(() => {
     if (state?.data?.success) {
@@ -29,10 +32,28 @@ export function NewTaskDialog({ projectId }: { projectId: string }) {
         <form action={action} className="flex flex-col gap-4">
           <DialogHeader>
             <DialogTitle>Créer une tâche</DialogTitle>
-            <DialogDescription>Ajoutez une nouvelle tâche à ce projet.</DialogDescription>
+            <DialogDescription>Ajoutez une nouvelle tâche{projectId ? " à ce projet" : ""}.</DialogDescription>
           </DialogHeader>
 
-          <input type="hidden" name="projectId" value={projectId} />
+          {/* Fixed project or selectable */}
+          {projectId ? (
+            <input type="hidden" name="projectId" value={projectId} />
+          ) : (
+            <div className="grid gap-2">
+              <Label htmlFor="projectId">Projet</Label>
+              <input type="hidden" name="projectId" value={selectedProjectId} />
+              <Select value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v ?? "")}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un projet" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects?.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {state?.error && (
             <div className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md">
@@ -90,10 +111,11 @@ export function NewTaskDialog({ projectId }: { projectId: string }) {
 
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" type="button" onClick={() => setOpen(false)} disabled={isPending}>Annuler</Button>
-            <Button type="submit" disabled={isPending}>{isPending ? "Création..." : "Ajouter la tâche"}</Button>
+            <Button type="submit" disabled={isPending || (!projectId && !selectedProjectId)}>{isPending ? "Création..." : "Ajouter la tâche"}</Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
+

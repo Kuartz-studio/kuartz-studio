@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { documents } from "@/db/schema";
 
-export function DocumentEditor({ document, projectSlug }: { document: any, projectSlug?: string }) {
+type DocumentRecord = typeof documents.$inferSelect;
+
+export function DocumentEditor({ document, projectSlug }: { document: DocumentRecord; projectSlug?: string }) {
   const [title, setTitle] = useState(document.title);
   const [content, setContent] = useState(document.content || "");
   const [isPending, startTransition] = useTransition();
@@ -21,7 +24,7 @@ export function DocumentEditor({ document, projectSlug }: { document: any, proje
 
       if (title !== document.title) {
         const titleRes = await updateDocumentTitleAction(document.id, title);
-        if (titleRes?.data?.slug) {
+        if (titleRes?.data && "slug" in titleRes.data && typeof titleRes.data.slug === "string") {
           newSlug = titleRes.data.slug;
         }
       }

@@ -53,8 +53,10 @@ const TAG_PRESET_COLORS = [
   "#EC4899", "#F43F5E", "#78716C", "#6B7280", "#64748B",
 ];
 
-function getStatus(v: string) { return STATUS_OPTIONS.find((s) => s.value === v) ?? STATUS_OPTIONS[0]; }
-function getPriority(v: number) { return PRIORITY_OPTIONS.find((p) => p.value === v) ?? PRIORITY_OPTIONS[0]; }
+const DEFAULT_STATUS = { value: "BACKLOG", label: "Backlog", color: "#A8A29E" } as const;
+const DEFAULT_PRIORITY = { value: 0, label: "Aucune", color: "#A8A29E" } as const;
+function getStatus(v: string) { return STATUS_OPTIONS.find((s) => s.value === v) ?? DEFAULT_STATUS; }
+function getPriority(v: number) { return PRIORITY_OPTIONS.find((p) => p.value === v) ?? DEFAULT_PRIORITY; }
 
 // ---------------------------------------------------------------------------
 // Cells
@@ -258,7 +260,7 @@ function TagsCell({ tags, allTags, projectId, onChange, onCreateTag, onDeleteTag
   const handleCreate = async () => {
     if (!search.trim() || exactMatch || isCreating) return;
     setIsCreating(true);
-    const color = TAG_PRESET_COLORS.find(c => !usedColors.has(c.toLowerCase())) || TAG_PRESET_COLORS[0];
+    const color = TAG_PRESET_COLORS.find(c => !usedColors.has(c.toLowerCase())) ?? "#EF4444";
     const newTag = await onCreateTag(search.trim(), color, projectId);
     setIsCreating(false);
     if (newTag) {
@@ -359,7 +361,7 @@ function AssigneeCell({ assignees, allUsers, onSave }: { assignees: TaskAssignee
                 {assignees.slice(0, 3).map((a) => <AvatarCustom key={a.user.id} name={a.user.name} avatarUrl={a.user.avatarUrl} />)}
                 {assignees.length > 3 && <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[var(--color-muted)] text-[9px] font-bold text-[var(--color-muted-foreground)] border border-[var(--color-border)]">+{assignees.length - 3}</span>}
               </div>
-              {assignees.length === 1 && (
+              {assignees.length === 1 && assignees[0] && (
                 <span className="text-xs text-[var(--color-muted-foreground)] truncate max-w-[80px]">
                   {assignees[0].user.name}
                 </span>
@@ -478,7 +480,7 @@ export function TasksTable({
                     onChange={(newTags) => startTransition(() => { updateTaskTagsAction(task.id, newTags.map(t => t.tag.id)) })}
                     onCreateTag={async (name, color, pid) => {
                       const newTag = await createTagAction(name, color, pid);
-                      return newTag;
+                      return newTag ?? null;
                     }}
                     onDeleteTag={(tagId) => startTransition(() => { deleteTagAction(tagId) })}
                     onUpdateTagColor={(tagId, color) => startTransition(() => { updateTagColorAction(tagId, color) })}

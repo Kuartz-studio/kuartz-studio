@@ -55,6 +55,7 @@ export async function decrypt(token: string): Promise<SessionPayload | null> {
     if (parts.length !== 3) return null;
     
     const [header, body, signatureBase64] = parts;
+    if (!header || !body || !signatureBase64) return null;
     const data = `${header}.${body}`;
     
     const key = await getSecretKey();
