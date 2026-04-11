@@ -272,12 +272,17 @@ function TagsCell({ tags, allTags, onChange, onCreateTag, onDeleteTag, onUpdateT
   return (
     <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) setColorPickerTagId(null); }}>
       <PopoverTrigger className="flex flex-wrap items-center gap-1 min-w-[80px] cursor-pointer outline-none" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
-        {tags.map((t) => (
-            <span key={t.tag.id}
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border whitespace-nowrap transition-colors bg-foreground text-background border-foreground/20">
-              {t.tag.name}
-            </span>
-          ))}
+        {tags.map((t) => {
+            const bg = t.tag.color ? `${t.tag.color}22` : "#8888ff22";
+            const text = t.tag.color ?? "#8888ff";
+            return (
+              <span key={t.tag.id}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border whitespace-nowrap transition-colors"
+                style={{ backgroundColor: bg, color: text, borderColor: t.tag.color ? `${t.tag.color}44` : "#8888ff44" }}>
+                {t.tag.name}
+              </span>
+            );
+          })}
           {tags.length === 0 && (
             <span className="text-[10px] text-[var(--color-muted-foreground)] italic border border-dashed border-[var(--color-border)] rounded-full px-2 py-0.5">
               + Tag
@@ -300,19 +305,31 @@ function TagsCell({ tags, allTags, onChange, onCreateTag, onDeleteTag, onUpdateT
             <CommandEmpty className="py-2 text-center text-sm">Aucun tag trouvé.</CommandEmpty>
             <CommandGroup>
               {allTags.map((tag) => {
+                const bg = tag.color ? `${tag.color}22` : "#8888ff22";
+                const text = tag.color ?? "#8888ff";
                 return (
                   <div key={tag.id}>
                     <CommandItem onSelect={() => { if (colorPickerTagId !== tag.id) toggle(tag); }} className="group/item flex items-center gap-2 pr-2">
-                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-foreground text-background">
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors" style={{ backgroundColor: bg, color: text }}>
                         {tag.name}
                       </span>
                       <div className="ml-auto flex items-center gap-2 opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setColorPickerTagId(colorPickerTagId === tag.id ? null : tag.id); }}
+                          className="relative h-4 w-4 rounded-full border border-black/20 dark:border-white/20 shrink-0 cursor-pointer hover:scale-110"
+                          style={{ backgroundColor: text }} title="Changer couleur"
+                        />
                         <button onClick={(e) => { e.stopPropagation(); onDeleteTag(tag.id); }} className="h-6 w-6 flex items-center justify-center rounded hover:bg-red-500/10 text-[var(--color-muted-foreground)] hover:text-red-500 transition-colors">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                       {currentIds.has(tag.id) && <Check className="ml-1 h-3.5 w-3.5 shrink-0 text-[var(--primary)]" />}
                     </CommandItem>
+                    {colorPickerTagId === tag.id && (
+                      <div className="border-t border-b border-[var(--color-border)] bg-[var(--color-muted)]">
+                        <ColorPaletteGrid currentColor={tag.color || "#8888ff"} usedColors={usedColors} onSelect={(c) => { onUpdateTagColor(tag.id, c); setColorPickerTagId(null); }} />
+                      </div>
+                    )}
                   </div>
                 );
               })}
