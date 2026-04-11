@@ -115,7 +115,7 @@ export default async function GlobalTasksPage({
           <h1 className="text-3xl font-bold tracking-tight">Tâches</h1>
           <p className="text-muted-foreground">Vue globale de toutes les tâches du studio.</p>
         </div>
-        <NewTaskDialog projects={allProjects} users={usersForDropdown} />
+        <NewTaskDialog projects={allProjects} users={usersForDropdown} projectUserMap={projectUserMap} />
       </div>
 
       <div className="bg-card p-4 rounded-xl border flex flex-col gap-4">

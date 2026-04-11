@@ -16,6 +16,7 @@ const insertTaskSchema = z.object({
   description: z.string().optional(),
   status: z.enum(["BACKLOG", "TODO", "IN_PROGRESS", "PAUSED", "DONE", "CANCELED"]).optional(),
   priority: z.coerce.number().int().min(0).max(4).optional(),
+  targetDate: z.string().optional(),
 });
 
 
@@ -52,6 +53,7 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
       description: parsed.data.description,
       status: parsed.data.status || "BACKLOG",
       priority: parsed.data.priority ?? 0,
+      targetDate: parsed.data.targetDate ? new Date(parsed.data.targetDate) : null,
       createdByUserId,
     }).returning();
 
