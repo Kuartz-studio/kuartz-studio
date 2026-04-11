@@ -8,14 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Plus, Check, ChevronsUpDown, FolderKanban } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-type Project = { id: string; name: string; slug: string };
+type Project = { id: string; name: string; slug: string; logoBase64?: string | null };
 
 export function NewTaskDialog({ projectId, projects }: { projectId?: string; projects?: Project[] }) {
   const [state, action, isPending] = useActionState(createTaskAction, {});
   const [open, setOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId ?? "");
+  const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
+
+  const selectedProject = projects?.find(p => p.id === selectedProjectId);
 
   useEffect(() => {
     if (state?.data?.success) {
@@ -43,16 +49,55 @@ export function NewTaskDialog({ projectId, projects }: { projectId?: string; pro
             <div className="grid gap-2">
               <Label htmlFor="projectId">Projet</Label>
               <input type="hidden" name="projectId" value={selectedProjectId} />
-              <Select value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v ?? "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un projet" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects?.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
+                <PopoverTrigger
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors outline-none",
+                    !selectedProjectId && "text-muted-foreground"
+                  )}
+                >
+                    {selectedProject ? (
+                      <span className="flex items-center gap-2">
+                        {selectedProject.logoBase64 ? (
+                          <img src={selectedProject.logoBase64} alt="" className="h-4 w-4 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <FolderKanban size={14} className="opacity-50 shrink-0" />
+                        )}
+                        {selectedProject.name}
+                      </span>
+                    ) : (
+                      <span>Sélectionner un projet</span>
+                    )}
+                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Chercher un projet..." />
+                    <CommandList>
+                      <CommandEmpty>Aucun projet.</CommandEmpty>
+                      <CommandGroup>
+                        {projects?.map(p => (
+                          <CommandItem
+                            key={p.id}
+                            value={p.name}
+                            onSelect={() => { setSelectedProjectId(p.id); setProjectPopoverOpen(false); }}
+                          >
+                            <div className="flex items-center gap-2 flex-1">
+                              {p.logoBase64 ? (
+                                <img src={p.logoBase64} alt="" className="h-4 w-4 rounded-full object-cover shrink-0" />
+                              ) : (
+                                <FolderKanban size={14} className="opacity-50 shrink-0" />
+                              )}
+                              <span className="text-sm">{p.name}</span>
+                            </div>
+                            {selectedProjectId === p.id && <Check className="ml-auto h-4 w-4 text-[var(--primary)]" />}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
 
@@ -119,4 +164,3 @@ export function NewTaskDialog({ projectId, projects }: { projectId?: string; pro
     </Dialog>
   );
 }
-

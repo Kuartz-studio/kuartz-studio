@@ -47,3 +47,26 @@ export async function updateUserAvatarAction(userId: string, base64: string) {
   revalidatePath("/tasks");
   revalidatePath("/projects");
 }
+
+export async function createUserAction(data: { name: string; email: string; role: "admin" | "employee" | "customer" }) {
+  const session = await verifySession();
+  if (!session || session.role !== "admin") return { error: "Non autorisé" };
+
+  const trimmedName = data.name.trim();
+  const trimmedEmail = data.email.trim().toLowerCase();
+
+  if (!trimmedName || !trimmedEmail) return { error: "Nom et email requis" };
+
+  // Check for existing email
+  const existing = await db.select().from(users).where(eq(users.email, trimmedEmail)).limit(1);
+  if (existing.length > 0) return { error: "Cet email est déjà utilisé" };
+
+  await db.insert(users).values({
+    name: trimmedName,
+    email: trimmedEmail,
+    role: data.role,
+  });
+
+  revalidatePath("/users");
+  return { success: true };
+}

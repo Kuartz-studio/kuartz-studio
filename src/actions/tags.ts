@@ -6,13 +6,13 @@ import { eq, and } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 
-export async function createTagAction(name: string, color: string, projectId: string) {
+export async function createTagAction(name: string, color: string, projectId?: string) {
   const session = await verifySession();
   if (!session) return null;
 
   try {
     const [tag] = await db.insert(tags).values({
-      name, color, projectId
+      name, color
     }).returning();
     revalidatePath(`/tasks`);
     revalidatePath(`/projects/[slug]`, 'page');

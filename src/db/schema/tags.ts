@@ -7,7 +7,7 @@ const createId = () => crypto.randomUUID();
 
 export const tags = sqliteTable("tag", {
   id: text("id").primaryKey().$defaultFn(() => createId()),
-  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   color: text("color"),
 });

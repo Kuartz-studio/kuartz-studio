@@ -15,7 +15,7 @@ import { createTagAction, deleteTagAction, updateTagColorAction, updateTaskTagsA
 import { ProjectTag } from "@/components/projects/ProjectTag";
 
 // Types
-export interface DbTag { id: string; name: string; color: string | null; projectId: string; }
+export interface DbTag { id: string; name: string; color: string | null; projectId: string | null; }
 export interface TaskTag { tag: DbTag; }
 export interface UserRecord { id: string; name: string; email: string; avatarBase64: string | null; role: string; }
 export interface TaskAssignee { user: UserRecord; }
@@ -228,10 +228,10 @@ function ColorPaletteGrid({ currentColor, usedColors, onSelect }: {
   );
 }
 
-function TagsCell({ tags, allTags, projectId, onChange, onCreateTag, onDeleteTag, onUpdateTagColor }: {
-  tags: TaskTag[]; allTags: DbTag[]; projectId: string;
+function TagsCell({ tags, allTags, onChange, onCreateTag, onDeleteTag, onUpdateTagColor }: {
+  tags: TaskTag[]; allTags: DbTag[];
   onChange: (tags: TaskTag[]) => void;
-  onCreateTag: (name: string, color: string, projectId: string) => Promise<DbTag | null>;
+  onCreateTag: (name: string, color: string) => Promise<DbTag | null>;
   onDeleteTag: (tagId: string) => void;
   onUpdateTagColor: (tagId: string, color: string) => void;
 }) {
@@ -241,13 +241,12 @@ function TagsCell({ tags, allTags, projectId, onChange, onCreateTag, onDeleteTag
   const [colorPickerTagId, setColorPickerTagId] = useState<string | null>(null);
   
   const currentIds = useMemo(() => new Set(tags.map((t) => t.tag.id)), [tags]);
-  const projectTags = useMemo(() => allTags.filter(t => t.projectId === projectId), [allTags, projectId]);
 
   const usedColors = useMemo(() => {
     const set = new Set<string>();
-    projectTags.forEach(t => { if (t.color) set.add(t.color.toLowerCase()); });
+    allTags.forEach(t => { if (t.color) set.add(t.color.toLowerCase()); });
     return set;
-  }, [projectTags]);
+  }, [allTags]);
 
   const toggle = (tag: DbTag) => {
     let newTags = [...tags];
@@ -256,13 +255,13 @@ function TagsCell({ tags, allTags, projectId, onChange, onCreateTag, onDeleteTag
     onChange(newTags);
   };
 
-  const exactMatch = projectTags.some(t => t.name.toLowerCase() === search.toLowerCase());
+  const exactMatch = allTags.some(t => t.name.toLowerCase() === search.toLowerCase());
 
   const handleCreate = async () => {
     if (!search.trim() || exactMatch || isCreating) return;
     setIsCreating(true);
     const color = TAG_PRESET_COLORS.find(c => !usedColors.has(c.toLowerCase())) ?? "#EF4444";
-    const newTag = await onCreateTag(search.trim(), color, projectId);
+    const newTag = await onCreateTag(search.trim(), color);
     setIsCreating(false);
     if (newTag) {
       onChange([...tags, { tag: newTag }]);
@@ -273,17 +272,12 @@ function TagsCell({ tags, allTags, projectId, onChange, onCreateTag, onDeleteTag
   return (
     <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) setColorPickerTagId(null); }}>
       <PopoverTrigger className="flex flex-wrap items-center gap-1 min-w-[80px] cursor-pointer outline-none" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
-        {tags.map((t) => {
-            const bg = t.tag.color ? `${t.tag.color}22` : "#8888ff22";
-            const text = t.tag.color ?? "#8888ff";
-            return (
-              <span key={t.tag.id}
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border whitespace-nowrap transition-colors"
-                style={{ backgroundColor: bg, color: text, borderColor: t.tag.color ? `${t.tag.color}44` : "#8888ff44" }}>
-                {t.tag.name}
-              </span>
-            );
-          })}
+        {tags.map((t) => (
+            <span key={t.tag.id}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border whitespace-nowrap transition-colors bg-foreground text-background border-foreground/20">
+              {t.tag.name}
+            </span>
+          ))}
           {tags.length === 0 && (
             <span className="text-[10px] text-[var(--color-muted-foreground)] italic border border-dashed border-[var(--color-border)] rounded-full px-2 py-0.5">
               + Tag
@@ -305,32 +299,20 @@ function TagsCell({ tags, allTags, projectId, onChange, onCreateTag, onDeleteTag
           <CommandList>
             <CommandEmpty className="py-2 text-center text-sm">Aucun tag trouvé.</CommandEmpty>
             <CommandGroup>
-              {projectTags.map((tag) => {
-                const bg = tag.color ? `${tag.color}22` : "#8888ff22";
-                const text = tag.color ?? "#8888ff";
+              {allTags.map((tag) => {
                 return (
                   <div key={tag.id}>
                     <CommandItem onSelect={() => { if (colorPickerTagId !== tag.id) toggle(tag); }} className="group/item flex items-center gap-2 pr-2">
-                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors" style={{ backgroundColor: bg, color: text }}>
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-foreground text-background">
                         {tag.name}
                       </span>
                       <div className="ml-auto flex items-center gap-2 opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setColorPickerTagId(colorPickerTagId === tag.id ? null : tag.id); }}
-                          className="relative h-4 w-4 rounded-full border border-black/20 dark:border-white/20 shrink-0 cursor-pointer hover:scale-110"
-                          style={{ backgroundColor: text }} title="Changer couleur"
-                        />
                         <button onClick={(e) => { e.stopPropagation(); onDeleteTag(tag.id); }} className="h-6 w-6 flex items-center justify-center rounded hover:bg-red-500/10 text-[var(--color-muted-foreground)] hover:text-red-500 transition-colors">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                       {currentIds.has(tag.id) && <Check className="ml-1 h-3.5 w-3.5 shrink-0 text-[var(--primary)]" />}
                     </CommandItem>
-                    {colorPickerTagId === tag.id && (
-                      <div className="border-t border-b border-[var(--color-border)] bg-[var(--color-muted)]">
-                        <ColorPaletteGrid currentColor={tag.color || "#8888ff"} usedColors={usedColors} onSelect={(c) => { onUpdateTagColor(tag.id, c); setColorPickerTagId(null); }} />
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -475,10 +457,9 @@ export function TasksTable({
                   <TagsCell 
                     tags={task.tags} 
                     allTags={allTags} 
-                    projectId={task.projectId}
                     onChange={(newTags) => startTransition(() => { updateTaskTagsAction(task.id, newTags.map(t => t.tag.id)) })}
-                    onCreateTag={async (name, color, pid) => {
-                      const newTag = await createTagAction(name, color, pid);
+                    onCreateTag={async (name, color) => {
+                      const newTag = await createTagAction(name, color);
                       return newTag ?? null;
                     }}
                     onDeleteTag={(tagId) => startTransition(() => { deleteTagAction(tagId) })}

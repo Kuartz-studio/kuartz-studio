@@ -1,15 +1,19 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { Check, Trash2, Crown, FolderKanban } from "lucide-react";
+import { Check, Trash2, Crown, FolderKanban, UserPlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AvatarCustom } from "@/components/ui/table-icons";
-import { updateUserAction, updateUserProjectsAction, deleteUserAction, updateUserAvatarAction } from "@/actions/users";
+import { updateUserAction, updateUserProjectsAction, deleteUserAction, updateUserAvatarAction, createUserAction } from "@/actions/users";
 import { ImageUpload } from "@/components/shared/ImageUpload";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -181,6 +185,10 @@ function ProjectsCell({ userProjects, allProjects, isAdmin, onSave }: {
 // ---------------------------------------------------------------------------
 export function UsersTable({ users, allProjects }: { users: UserRow[]; allProjects: ProjectRecord[] }) {
   const [isPending, startTransition] = useTransition();
+  const [openAdd, setOpenAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newRole, setNewRole] = useState<"admin" | "employee" | "customer">("customer");
 
   // Sort: admins → employees → customers
   const sorted = useMemo(() => {
@@ -193,103 +201,186 @@ export function UsersTable({ users, allProjects }: { users: UserRow[]; allProjec
     });
   }, [users]);
 
+  const handleOpenAdd = () => {
+    setNewName("");
+    setNewEmail("");
+    setNewRole("customer");
+    setOpenAdd(true);
+  };
+
+  const handleAddSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !newEmail.trim()) return;
+
+    startTransition(async () => {
+      const res = await createUserAction({ name: newName, email: newEmail, role: newRole });
+      if (res?.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Utilisateur créé");
+        setOpenAdd(false);
+      }
+    });
+  };
+
   return (
-    <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-card)] flex flex-col">
-      <table className="text-sm border-collapse w-full relative table-fixed">
-        <thead className="bg-[var(--color-muted)]">
-          <tr>
-            <th className="px-4 py-3 text-left w-14 border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Avatar</span>
-            </th>
-            <th className="px-4 py-3 text-left w-[18%] border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Nom</span>
-            </th>
-            <th className="px-4 py-3 text-left w-[28%] border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Email</span>
-            </th>
-            <th className="px-4 py-3 text-left w-24 border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Rôle</span>
-            </th>
-            <th className="px-4 py-3 text-left border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Projet</span>
-            </th>
-            <th className="px-4 py-3 text-right w-14 border-b border-[var(--color-border)]"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((user) => {
-            const isAdmin = user.role === "admin";
-            return (
-              <tr key={user.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)]/40 transition-colors group">
-                {/* Avatar */}
-                <td className="px-4 py-2">
-                  <ImageUpload
-                    currentImage={user.avatarBase64}
-                    onUpload={async (base64) => { await updateUserAvatarAction(user.id, base64); }}
-                    shape="circle"
-                    compact
-                    fallbackLabel={user.name}
-                  />
-                </td>
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Utilisateurs</h1>
+          <p className="text-muted-foreground mt-1">Gérez l&apos;équipe Kuartz et tous vos clients.</p>
+        </div>
+        <Button className="gap-2" onClick={handleOpenAdd}>
+          <UserPlus size={16} /> Ajouter
+        </Button>
+      </div>
 
-                {/* Nom (editable) */}
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <EditableTextCell
-                      value={user.name}
-                      onSave={(v) => startTransition(() => { updateUserAction(user.id, { name: v }) })}
-                      placeholder="Nom"
+      <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-card)] flex flex-col">
+        <table className="text-sm border-collapse w-full relative table-fixed">
+          <thead className="bg-[var(--color-muted)]">
+            <tr>
+              <th className="px-4 py-3 text-left w-14 border-b border-[var(--color-border)]">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Avatar</span>
+              </th>
+              <th className="px-4 py-3 text-left w-[18%] border-b border-[var(--color-border)]">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Nom</span>
+              </th>
+              <th className="px-4 py-3 text-left w-[28%] border-b border-[var(--color-border)]">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Email</span>
+              </th>
+              <th className="px-4 py-3 text-left w-24 border-b border-[var(--color-border)]">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Rôle</span>
+              </th>
+              <th className="px-4 py-3 text-left border-b border-[var(--color-border)]">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Projet</span>
+              </th>
+              <th className="px-4 py-3 text-right w-14 border-b border-[var(--color-border)]"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((user) => {
+              const isAdmin = user.role === "admin";
+              return (
+                <tr key={user.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)]/40 transition-colors group">
+                  {/* Avatar */}
+                  <td className="px-4 py-2">
+                    <ImageUpload
+                      currentImage={user.avatarBase64}
+                      onUpload={async (base64) => { await updateUserAvatarAction(user.id, base64); }}
+                      shape="circle"
+                      compact
+                      fallbackLabel={user.name}
                     />
-                    {isAdmin && <Crown size={12} className="text-amber-400 shrink-0" />}
-                  </div>
-                </td>
+                  </td>
 
-                {/* Email (editable) */}
-                <td className="px-4 py-2">
-                  <EditableTextCell
-                    value={user.email}
-                    onSave={(v) => startTransition(() => { updateUserAction(user.id, { email: v }) })}
-                    placeholder="email@example.com"
-                  />
-                </td>
+                  {/* Nom (editable) */}
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <EditableTextCell
+                        value={user.name}
+                        onSave={(v) => startTransition(() => { updateUserAction(user.id, { name: v }) })}
+                        placeholder="Nom"
+                      />
+                      {isAdmin && <Crown size={12} className="text-amber-400 shrink-0" />}
+                    </div>
+                  </td>
 
-                {/* Rôle (select) */}
-                <td className="px-4 py-2">
-                  <RoleCell
-                    value={user.role}
-                    onSave={(v) => startTransition(() => { updateUserAction(user.id, { role: v as "admin" | "employee" | "customer" }) })}
-                  />
-                </td>
+                  {/* Email (editable) */}
+                  <td className="px-4 py-2">
+                    <EditableTextCell
+                      value={user.email}
+                      onSave={(v) => startTransition(() => { updateUserAction(user.id, { email: v }) })}
+                      placeholder="email@example.com"
+                    />
+                  </td>
 
-                {/* Projets (multi-select) */}
-                <td className="px-4 py-2">
-                  <ProjectsCell
-                    userProjects={user.projects}
-                    allProjects={allProjects}
-                    isAdmin={isAdmin}
-                    onSave={(ids) => startTransition(() => { updateUserProjectsAction(user.id, ids) })}
-                  />
-                </td>
+                  {/* Rôle (select) */}
+                  <td className="px-4 py-2">
+                    <RoleCell
+                      value={user.role}
+                      onSave={(v) => startTransition(() => { updateUserAction(user.id, { role: v as "admin" | "employee" | "customer" }) })}
+                    />
+                  </td>
 
-                {/* Delete */}
-                <td className="px-4 py-2 text-right">
-                  {!isAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-muted-foreground)] hover:text-destructive"
-                      onClick={() => startTransition(() => { deleteUserAction(user.id) })}
-                      disabled={isPending}
-                    >
-                      <Trash2 size={14} />
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  {/* Projets (multi-select) */}
+                  <td className="px-4 py-2">
+                    <ProjectsCell
+                      userProjects={user.projects}
+                      allProjects={allProjects}
+                      isAdmin={isAdmin}
+                      onSave={(ids) => startTransition(() => { updateUserProjectsAction(user.id, ids) })}
+                    />
+                  </td>
+
+                  {/* Delete */}
+                  <td className="px-4 py-2 text-right">
+                    {!isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-muted-foreground)] hover:text-destructive"
+                        onClick={() => startTransition(() => { deleteUserAction(user.id) })}
+                        disabled={isPending}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Add User Dialog */}
+      <Dialog open={openAdd} onOpenChange={setOpenAdd}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Ajouter un utilisateur</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddSubmit} className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="user-name">Nom</Label>
+              <Input
+                id="user-name"
+                placeholder="Prénom Nom"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="user-email">Email</Label>
+              <Input
+                id="user-email"
+                type="email"
+                placeholder="email@example.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="user-role">Rôle</Label>
+              <Select value={newRole} onValueChange={(val) => setNewRole(val as "admin" | "employee" | "customer")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="button" variant="ghost" onClick={() => setOpenAdd(false)}>Annuler</Button>
+              <Button type="submit" disabled={isPending}>{isPending ? "Création..." : "Créer"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,8 +1,6 @@
 import { db } from "@/db";
 import { users, projects, projectToUser } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
 import { UsersTable } from "@/components/users/UsersTable";
 
 export default async function UsersListPage() {
@@ -38,16 +36,6 @@ export default async function UsersListPage() {
 
   return (
     <div className="flex flex-col gap-6 flex-1">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Utilisateurs</h1>
-          <p className="text-muted-foreground mt-1">Gérez l&apos;équipe Kuartz et tous vos clients.</p>
-        </div>
-        <Button className="gap-2">
-          <UserPlus size={16} /> Ajouter
-        </Button>
-      </div>
-
       <UsersTable users={usersWithProjects} allProjects={allProjects} />
     </div>
   );
