@@ -39,7 +39,7 @@ export async function createProjectAction(prevState: ActionState, formData: Form
     return { error: "Erreur serveur lors de la création du projet" };
   }
   
-  redirect(`/projects/${slug}`);
+  redirect(`/projects`);
 }
 
 export async function deleteProjectAction(projectId: string) {

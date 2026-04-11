@@ -5,7 +5,8 @@ import { CheckSquare, FileText, Link as LinkIcon, Settings } from "lucide-react"
 import { ClientSidebar } from "./ClientSidebar";
 import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
-import { ClientTasksView } from "./ClientTasksView";
+import { TasksTable } from "@/components/tasks/TasksTable";
+import { ClientDocumentRenderer } from "./ClientDocumentRenderer";
 
 type Props = {
   project: {
@@ -14,21 +15,25 @@ type Props = {
     slug: string;
     iconSvg: string | null;
     clientPortalToken: string | null;
-    portalSettings: any | null; // will be used in step 4
+    portalSettings: any | null;
   };
   currentUser: { id: string; name: string; avatarBase64: string | null; email: string } | null;
   isAdmin: boolean;
   tasks: any[];
+  documents: any[];
+  allTags: any[];
+  allUsers: any[];
+  allProjects: any[];
+  projectUserMap: Record<string, string[]>;
 };
 
-export function ClientDashboard({ project, currentUser, isAdmin, tasks }: Props) {
+export function ClientDashboard({ project, currentUser, isAdmin, tasks, documents, allTags, allUsers, allProjects, projectUserMap }: Props) {
   const [activeTab, setActiveTab] = useState("tasks");
   const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
 
   const settings = project.portalSettings || { modules: { tasks: true, integration: false, branding: false } };
 
-  // Determine which tab should be active by default if the current active tab is hidden
-  const navItems = [];
+  const navItems: any[] = [];
 
   if (settings.modules.tasks) {
     navItems.push({
@@ -44,31 +49,37 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks }: Props)
   }
 
   if (settings.modules.integration) {
+    let subItems = [];
+    if (documents && documents.length > 0) {
+      subItems = documents.map((doc: any) => ({
+        id: doc.id,
+        label: doc.title,
+        isActive: activeTab === "integration" && activeSubTab === doc.id,
+        onClick: () => {
+          setActiveTab("integration");
+          setActiveSubTab(doc.id);
+        },
+      }));
+    } else {
+      subItems = [
+        {
+          id: "empty",
+          label: "Aucun document",
+          isActive: activeTab === "integration" && activeSubTab === "empty",
+          onClick: () => {
+            setActiveTab("integration");
+            setActiveSubTab("empty");
+          },
+        }
+      ];
+    }
+
     navItems.push({
       id: "integration",
       label: "Intégration",
       icon: <Settings size={18} />,
       isActive: activeTab === "integration",
-      subItems: [
-        {
-          id: "doc1",
-          label: "Documentation CMS",
-          isActive: activeTab === "integration" && activeSubTab === "doc1",
-          onClick: () => {
-            setActiveTab("integration");
-            setActiveSubTab("doc1");
-          },
-        },
-        {
-          id: "doc2",
-          label: "Composants",
-          isActive: activeTab === "integration" && activeSubTab === "doc2",
-          onClick: () => {
-            setActiveTab("integration");
-            setActiveSubTab("doc2");
-          },
-        },
-      ],
+      subItems,
     });
   }
 
@@ -99,7 +110,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks }: Props)
       />
       
       <main className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-4xl mx-auto flex flex-col gap-6">
+        <div className="max-w-5xl mx-auto flex flex-col gap-6">
           <header className="flex items-center justify-between border-b pb-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
@@ -107,15 +118,15 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks }: Props)
               </h1>
               {activeSubTab && (
                 <p className="text-muted-foreground mt-1 flex items-center gap-2">
-                  <span className="text-sm font-medium">{navItems.find(n => n.id === activeTab)?.subItems?.find(s => s.id === activeSubTab)?.label}</span>
+                  <span className="text-sm font-medium">{navItems.find((n: any) => n.id === activeTab)?.subItems?.find((s: any) => s.id === activeSubTab)?.label}</span>
                 </p>
               )}
             </div>
 
-            {/* Profile Dropdown Placeholder */}
+            {/* Profile Dropdown */}
             <div className="flex items-center gap-3">
                {isAdmin && (
-                 <Link href={`/projects/${project.slug}`} title="Retour à l'espace Admin" className="bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs px-3 py-1.5 rounded-md font-semibold tracking-wide border border-primary/20 flex items-center gap-1.5">
+                 <Link href={`/projects`} title="Retour à l'espace Admin" className="bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs px-3 py-1.5 rounded-md font-semibold tracking-wide border border-primary/20 flex items-center gap-1.5">
                     Mode Admin
                  </Link>
                )}
@@ -141,14 +152,15 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks }: Props)
               className="flex flex-col gap-6"
             >
               {activeTab === "tasks" && !activeSubTab ? (
-                <ClientTasksView 
+                <TasksTable 
                   tasks={tasks}
-                  projectId={project.id}
-                  projectSlug={project.slug}
-                  portalToken={project.clientPortalToken || ""}
-                  currentUser={currentUser}
-                  isAdmin={isAdmin}
+                  allTags={allTags}
+                  allUsers={allUsers}
+                  allProjects={allProjects}
+                  projectUserMap={projectUserMap}
                 />
+              ) : activeTab === "integration" && activeSubTab !== "empty" && activeSubTab ? (
+                <ClientDocumentRenderer document={documents.find((d: any) => d.id === activeSubTab) || documents[0]} />
               ) : (
                 <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground shadow-sm">
                   Placeholder pour <strong>{activeTab} {activeSubTab ? `> ${activeSubTab}` : ''}</strong>

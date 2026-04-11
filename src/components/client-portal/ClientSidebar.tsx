@@ -32,14 +32,14 @@ export function ClientSidebar({ projectName, iconSvg, items }: Props) {
     <aside className="w-64 border-r bg-card/50 flex flex-col shrink-0 overflow-y-auto">
       {/* Header Logo & Nom du Projet */}
       <div className="h-16 px-4 flex items-center gap-3 border-b shrink-0">
-        <div className="w-8 h-8 rounded-md bg-sidebar-foreground flex items-center justify-center shrink-0 overflow-hidden text-background">
+        <div className="w-8 h-8 flex items-center justify-center shrink-0 text-foreground">
           {iconSvg ? (
             <div 
-              className="w-5 h-5 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:fill-current" 
+              className="w-6 h-6 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:fill-current" 
               dangerouslySetInnerHTML={{ __html: iconSvg }} 
             />
           ) : (
-            <span className="font-bold text-sm tracking-tight">{projectName.charAt(0).toUpperCase()}</span>
+            <span className="font-bold text-lg tracking-tight bg-sidebar-foreground text-background w-full h-full rounded-md flex items-center justify-center">{projectName.charAt(0).toUpperCase()}</span>
           )}
         </div>
         <span className="font-bold tracking-tight truncate">{projectName}</span>

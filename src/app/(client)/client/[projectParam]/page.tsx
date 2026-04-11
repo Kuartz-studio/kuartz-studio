@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { projects, projectToUser, users, tasks, taskAssignees, taskTags, tags as dbTags, comments } from "@/db/schema";
+import { projects, projectToUser, users, tasks, taskAssignees, taskTags, tags as dbTags, comments, documents } from "@/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/lib/auth/session";
@@ -113,6 +113,25 @@ export default async function ClientPortalPage({ params }: { params: Promise<{ p
   const doneTasks = enrichedTasks.filter((t) => t.status === "DONE").length;
   const progressPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
+  // Build same shape expected by TasksTable
+  // Include all project-linked users + all admin/employee users (always assignable)
+  const allProjectLinkedUserIds = customerLinks.map(pm => pm.userId);
+  const adminEmployeeIds = allUsersRows
+    .filter(u => u.role === "admin" || u.role === "employee")
+    .map(u => u.id);
+  const allAssignableIds = [...new Set([...allProjectLinkedUserIds, ...adminEmployeeIds])];
+  const projectUserMap: Record<string, string[]> = {
+    [project.id]: allAssignableIds,
+  };
+  const usersForDropdown = allUsersRows.map(u => ({ ...u }));
+
+  const projectDocs = await db.select().from(documents).where(eq(documents.projectId, project.id)).orderBy(documents.order);
+  const serializedDocs = projectDocs.map(doc => ({
+    ...doc,
+    createdAt: doc.createdAt ? doc.createdAt.toISOString() : null,
+    updatedAt: doc.updatedAt ? doc.updatedAt.toISOString() : null,
+  }));
+
   return (
     <ClientPortalRoot
       project={project}
@@ -120,6 +139,11 @@ export default async function ClientPortalPage({ params }: { params: Promise<{ p
       isAdmin={isAdmin}
       adminId={session?.userId || null}
       tasks={enrichedTasks}
+      allTags={allTagsWithColor}
+      allUsers={usersForDropdown}
+      allProjects={[project]}
+      projectUserMap={projectUserMap}
+      documents={serializedDocs}
       progressStats={{
         total: totalTasks,
         done: doneTasks,

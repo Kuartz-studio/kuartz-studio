@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { Check, ExternalLink, FolderKanban } from "lucide-react";
+import { PanelRight, Trash2, Check, ExternalLink, FolderKanban } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AvatarCustom, PriorityIcon } from "@/components/ui/table-icons";
-import { updateProjectAction, updateProjectUsersAction, updateProjectLogoAction } from "@/actions/projects";
+import { updateProjectAction, updateProjectUsersAction, updateProjectLogoAction, deleteProjectAction } from "@/actions/projects";
 import { ImageUpload } from "@/components/shared/ImageUpload";
 import Link from "next/link";
+import { PortalSettingsForm } from "@/components/client-portal/PortalSettingsForm";
 
 // Types
 interface ProjectUser { id: string; name: string | null; avatarBase64: string | null; role: string; }
@@ -17,6 +20,8 @@ interface ProjectRow {
   id: string; name: string; slug: string; description: string | null;
   url: string | null; logoBase64: string | null; priority: number | null;
   clientPortalToken: string | null;
+  iconSvg: string | null;
+  portalSettings: any | null;
   users: ProjectUser[];
 }
 
@@ -224,6 +229,14 @@ function UsersCell({ projectUsers, allUsers, onSave }: { projectUsers: ProjectUs
 // ---------------------------------------------------------------------------
 export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; allUsers: UserRecord[] }) {
   const [isPending, startTransition] = useTransition();
+  const [settingsProject, setSettingsProject] = useState<ProjectRow | null>(null);
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer définitivement ce projet ?")) {
+      await deleteProjectAction(id);
+      setSettingsProject(null);
+    }
+  };
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-card)] flex flex-col">
@@ -245,7 +258,9 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
             <th className="px-4 py-3 text-center w-20 border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Priorité</span>
             </th>
-            <th className="px-1 py-3 text-center w-12 border-b border-[var(--color-border)]"></th>
+            <th className="px-2 py-3 text-center w-24 border-b border-[var(--color-border)]">
+              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Actions</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -300,17 +315,53 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
               </td>
 
               {/* Actions */}
-              <td className="px-1 py-2 text-center">
-                <Link href={`/client/${project.slug}-${project.clientPortalToken}`} target="_blank">
-                  <button className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors p-1" title="Ouvrir Vue Client">
-                    <ExternalLink size={14} />
+              <td className="px-2 py-2 text-center">
+                <div className="flex items-center justify-center gap-0.5">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setSettingsProject(project); }} 
+                    className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md" 
+                    title="Configuration du projet"
+                  >
+                    <PanelRight size={15} />
                   </button>
-                </Link>
+                  <Link href={`/client/${project.slug}-${project.clientPortalToken}`} target="_blank">
+                    <button className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md" title="Vue Client">
+                      <ExternalLink size={15} />
+                    </button>
+                  </Link>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {/* Slide-over Settings */}
+      <Sheet open={!!settingsProject} onOpenChange={(val: boolean) => !val && setSettingsProject(null)}>
+        <SheetContent className="w-[720px] max-w-[90vw] overflow-y-auto overflow-x-hidden px-8 py-8" side="right">
+          <SheetHeader className="mb-6">
+            <SheetTitle>Configuration : {settingsProject?.name}</SheetTitle>
+            <SheetDescription>Gérez l'accès au portail client et les personnalisations.</SheetDescription>
+          </SheetHeader>
+          
+          {settingsProject && (
+            <div className="flex flex-col gap-6 pb-12">
+               <PortalSettingsForm project={settingsProject as any} />
+               
+               <div className="pt-8 mt-4 border-t border-[var(--color-border)]">
+                 <h3 className="text-sm font-semibold text-red-500 mb-2">Zone Dangereuse</h3>
+                 <p className="text-sm text-[var(--color-muted-foreground)] mb-4 leading-relaxed">
+                   La suppression du projet supprimera définitivement toutes les tâches, commentaires, documents et fichiers qui lui sont liés. Cette action est irréversible.
+                 </p>
+                 <Button variant="destructive" size="sm" className="gap-2" onClick={() => handleDelete(settingsProject.id)}>
+                   <Trash2 size={16} />
+                   Supprimer ce projet
+                 </Button>
+               </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
