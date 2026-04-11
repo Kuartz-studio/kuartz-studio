@@ -9,6 +9,7 @@ export default async function DocumentsPage() {
       id: documents.id,
       title: documents.title,
       slug: documents.slug,
+      category: documents.category,
       content: documents.content,
       projectId: documents.projectId,
       projectName: projects.name,

@@ -16,7 +16,7 @@ interface SheetDoc {
   title?: string;
   content?: string | null;
   projectId?: string | null;
-  category?: string;
+  category?: string | null;
 }
 
 export function DocumentSheet({ 

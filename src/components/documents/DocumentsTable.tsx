@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { PanelRight, FileText, Plus, Copy, Trash2 } from "lucide-react";
+import { PanelRight, FileText, Plus, CopyPlus, Trash2, PenLine } from "lucide-react";
 import { DocumentSheet } from "@/components/documents/DocumentSheet";
 import { deleteDocumentAction } from "@/actions/documents";
 import { ProjectTag } from "@/components/projects/ProjectTag";
@@ -22,8 +22,19 @@ interface DocRow {
   authorName: string | null;
   authorAvatarBase64: string | null;
   updatedAt: Date | null;
+  category?: string | null;
   content?: string | null;
 }
+
+const categoryColors: Record<string, string> = {
+  Framer: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  Webflow: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
+  Figma: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  Branding: "bg-pink-500/10 text-pink-500 border-pink-500/20",
+  Design: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  Copywriting: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  Autre: "bg-muted text-muted-foreground border-transparent",
+};
 
 export function DocumentsTable({ documents, allProjects }: { documents: DocRow[]; allProjects: { id: string; name: string }[] }) {
   const [isPending, startTransition] = useTransition();
@@ -85,8 +96,11 @@ export function DocumentsTable({ documents, allProjects }: { documents: DocRow[]
                 <th className="px-4 py-3 text-left border-b border-[var(--color-border)]">
                   <span className="text-xs font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide">Titre</span>
                 </th>
-                <th className="px-4 py-3 text-left w-[25%] border-b border-[var(--color-border)]">
+                <th className="px-4 py-3 text-left w-[20%] border-b border-[var(--color-border)]">
                   <span className="text-xs font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide">Projet</span>
+                </th>
+                <th className="px-4 py-3 text-left w-32 border-b border-[var(--color-border)]">
+                  <span className="text-xs font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide">Catégorie</span>
                 </th>
                 <th className="px-4 py-3 text-left w-48 border-b border-[var(--color-border)]">
                   <span className="text-xs font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide">Auteur</span>
@@ -118,6 +132,11 @@ export function DocumentsTable({ documents, allProjects }: { documents: DocRow[]
                     )}
                   </td>
                   <td className="px-4 py-2.5">
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border inline-block ${categoryColors[doc.category || "Autre"] || categoryColors.Autre}`}>
+                      {doc.category || "Autre"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5">
                     {doc.authorName ? (
                       <div className="flex items-center gap-2">
                         <AvatarCustom name={doc.authorName} avatarBase64={doc.authorAvatarBase64} />
@@ -139,14 +158,14 @@ export function DocumentsTable({ documents, allProjects }: { documents: DocRow[]
                         className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md"
                         title="Dupliquer le document"
                       >
-                        <Copy size={15} />
+                        <CopyPlus size={15} />
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleOpenEdit(doc); }}
                         className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md"
                         title="Éditer le document"
                       >
-                        <PanelRight size={15} />
+                        <PenLine size={15} />
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}
