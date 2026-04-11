@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { PanelRight, FileText, Plus } from "lucide-react";
+import { PanelRight, FileText, Plus, Copy } from "lucide-react";
 import { DocumentSheet } from "@/components/documents/DocumentSheet";
 import { ProjectTag } from "@/components/projects/ProjectTag";
 import { AvatarCustom } from "@/components/ui/table-icons";
@@ -44,6 +44,15 @@ export function DocumentsTable({ documents, allProjects }: { documents: DocRow[]
   const handleClose = () => {
     setSheetMode(null);
     setActiveDoc(null);
+  };
+
+  const handleDuplicate = (doc: DocRow) => {
+    setActiveDoc({
+      ...doc,
+      id: undefined, // ensure it's treated as new
+      title: `${doc.title} copy`
+    });
+    setSheetMode("create");
   };
 
   return (
@@ -115,7 +124,14 @@ export function DocumentsTable({ documents, allProjects }: { documents: DocRow[]
                     </span>
                   </td>
                   <td className="px-2 py-2.5 text-center">
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDuplicate(doc); }}
+                        className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md"
+                        title="Dupliquer le document"
+                      >
+                        <Copy size={15} />
+                      </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleOpenEdit(doc); }}
                         className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md"

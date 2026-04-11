@@ -186,6 +186,7 @@ src/
 - ZERO bibliothèque d'auth (pas de NextAuth, Clerk, Lucia, Better Auth, Auth.js)
 - ❌ AUCUNE interface de création de compte public (`/register`). Les comptes sont pré-référencés.
 - Les clients (customer) n'ont PAS besoin de mot de passe (digicode). L'accès se fait par une session magique / passless authentifiée sur leur email.
+- **Règle d'assignation Admin** : Les utilisateurs `role === "admin"` ont accès de manière implicite à TOUS les projets. Ils ne sont pas liés physiquement dans `project_to_user`. Lors du filtrage des dropdowns d'assignation ou des accès, **il faut toujours inclure les admins explicitement** (`u.role === 'admin' || isLinked`). Ne pas les exclure par erreur lors des filtrages par projet.
 - Les admins/salariés utilisent un code PIN (digicode, 6 chiffres) qui doit être haché publiquement.
 - Sessions signées avec HMAC-SHA256 via `crypto.subtle` ou `crypto` (node built-in)
 - Session stockée dans un cookie HttpOnly, Secure, SameSite=Lax

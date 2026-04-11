@@ -507,7 +507,7 @@ export function TasksTable({
                 <td className="px-4 py-2.5">
                   <AssigneeCell 
                     assignees={task.assignees} 
-                    allUsers={projectUserMap ? allUsers.filter(u => (projectUserMap[task.projectId] ?? []).includes(u.id)) : allUsers} 
+                    allUsers={projectUserMap ? allUsers.filter(u => u.role === "admin" || (projectUserMap[task.projectId] ?? []).includes(u.id)) : allUsers} 
                     onSave={(userIds) => startTransition(() => { updateTaskAssigneesAction(task.id, userIds) })} 
                   />
                 </td>

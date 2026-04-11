@@ -45,6 +45,24 @@ export function DocumentSheet({
     }
   }, [open, document]);
 
+  const handleProjectChange = (val: string | null) => {
+    const newProjectId = val || "";
+    
+    // Auto-replace project name in content if switching from one valid project to another
+    if (projectId && newProjectId && projectId !== newProjectId && content && allProjects) {
+      const oldProject = allProjects.find(p => p.id === projectId);
+      const newProject = allProjects.find(p => p.id === newProjectId);
+      
+      if (oldProject && newProject) {
+        // Find & replace old brand name with new brand name globally and case-insensitively
+        const regex = new RegExp(oldProject.name, 'gi');
+        setContent(prev => prev.replace(regex, newProject.name));
+      }
+    }
+    
+    setProjectId(newProjectId);
+  };
+
   const handleSave = () => {
     startTransition(async () => {
       if (mode === "create") {
@@ -121,7 +139,7 @@ export function DocumentSheet({
                 <ProjectSelect
                   multiple={false}
                   value={projectId || null}
-                  onChange={(val) => setProjectId(val || "")}
+                  onChange={handleProjectChange}
                   projects={allProjects as any}
                   placeholder="Attacher à un projet..."
                 />
