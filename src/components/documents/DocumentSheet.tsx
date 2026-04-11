@@ -55,8 +55,10 @@ export function DocumentSheet({
       
       if (oldProject && newProject) {
         // Find & replace old brand name with new brand name globally and case-insensitively
-        const regex = new RegExp(oldProject.name, 'gi');
+        const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapeRegExp(oldProject.name), 'gi');
         setContent(prev => prev.replace(regex, newProject.name));
+        setTitle(prev => prev.replace(regex, newProject.name));
       }
     }
     
@@ -82,11 +84,12 @@ export function DocumentSheet({
         if (title !== document.title) {
           await updateDocumentTitleAction(document.id, title);
         }
-        if (content !== document.content) {
+        if (content !== (document.content || "")) {
           await updateDocumentContentAction(document.id, content);
         }
-        if (projectId !== document.projectId && allProjects.length > 0) {
-          await linkDocumentToProjectAction(document.id, projectId);
+        const oldProjectId = document.projectId || "";
+        if (projectId !== oldProjectId && allProjects.length > 0) {
+          await linkDocumentToProjectAction(document.id, projectId || null);
         }
         onOpenChange(false);
       }

@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { PanelRight, FileText, Plus, Copy } from "lucide-react";
+import { PanelRight, FileText, Plus, Copy, Trash2 } from "lucide-react";
 import { DocumentSheet } from "@/components/documents/DocumentSheet";
+import { deleteDocumentAction } from "@/actions/documents";
 import { ProjectTag } from "@/components/projects/ProjectTag";
 import { AvatarCustom } from "@/components/ui/table-icons";
 import { format } from "date-fns";
@@ -53,6 +54,14 @@ export function DocumentsTable({ documents, allProjects }: { documents: DocRow[]
       title: `${doc.title} copy`
     });
     setSheetMode("create");
+  };
+
+  const handleDelete = (doc: DocRow) => {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer "${doc.title}" ?`)) {
+      startTransition(async () => {
+        await deleteDocumentAction(doc.id);
+      });
+    }
   };
 
   return (
@@ -138,6 +147,13 @@ export function DocumentsTable({ documents, allProjects }: { documents: DocRow[]
                         title="Éditer le document"
                       >
                         <PanelRight size={15} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}
+                        className="text-[var(--color-muted-foreground)] hover:text-red-500 hover:bg-red-500/10 transition-colors p-1.5 rounded-md"
+                        title="Supprimer le document"
+                      >
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </td>

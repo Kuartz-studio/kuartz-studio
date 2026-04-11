@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -118,6 +119,12 @@ export function RichTextEditor({ content, onChange, placeholder = "Rédigez votr
     },
     immediatelyRender: false,
   });
+
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content);
+    }
+  }, [content, editor]);
 
   return (
     <div className={cn("flex flex-col border rounded-md overflow-hidden bg-background h-full shadow-sm", className)}>

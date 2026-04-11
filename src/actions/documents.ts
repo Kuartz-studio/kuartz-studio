@@ -124,11 +124,11 @@ export async function unlinkDocumentFromTaskAction(documentId: string, taskId: s
   return { data: { success: true } };
 }
 
-export async function linkDocumentToProjectAction(documentId: string, projectId: string): Promise<ActionState> {
+export async function linkDocumentToProjectAction(documentId: string, projectId: string | null): Promise<ActionState> {
   const session = await verifySession();
   if (!session) return { error: "Non autorisé" };
 
-  await db.update(documents).set({ projectId }).where(eq(documents.id, documentId));
+  await db.update(documents).set({ projectId: projectId || null }).where(eq(documents.id, documentId));
   revalidatePath("/documents");
   revalidatePath("/projects");
   return { data: { success: true } };
