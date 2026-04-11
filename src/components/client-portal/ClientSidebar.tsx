@@ -17,11 +17,12 @@ type NavItem = {
 
 type Props = {
   projectName: string;
+  projectSlug: string;
   logoBase64: string | null;
   items: NavItem[];
 };
 
-export function ClientSidebar({ projectName, logoBase64, items }: Props) {
+export function ClientSidebar({ projectName, projectSlug, logoBase64, items }: Props) {
   // Garder trace des menus déroulants ouverts
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
@@ -103,6 +104,18 @@ export function ClientSidebar({ projectName, logoBase64, items }: Props) {
             </AnimatePresence>
           </div>
         ))}
+      </div>
+
+      <div className="mt-auto p-4 border-t">
+        <a 
+          href={`https://kuartz.studio?utm_source=portal&utm_medium=referral&utm_campaign=${projectSlug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-muted-foreground hover:text-primary transition-colors flex flex-col gap-0.5"
+        >
+          <span>Propulsé par</span>
+          <span className="font-semibold text-foreground">Kuartz Studio</span>
+        </a>
       </div>
     </aside>
   );

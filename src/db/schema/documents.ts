@@ -11,6 +11,7 @@ export const documents = sqliteTable("document", {
   authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   slug: text("slug").notNull(),
+  category: text("category").default("Autre"),
   content: text("content"),
   order: integer("order").default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),

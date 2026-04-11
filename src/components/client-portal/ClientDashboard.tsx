@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, FileText, Link as LinkIcon, Settings } from "lucide-react";
+import { CheckSquare, FileText, Link as LinkIcon, Settings, Globe, Layers, Palette, PenTool, Type } from "lucide-react";
+import { FramerIcon } from "@/components/icons";
 import { ClientSidebar } from "./ClientSidebar";
 import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
@@ -49,23 +50,40 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
     });
   }
 
-  if (settings.modules.integration && documents && documents.length > 0) {
-    let subItems = documents.map((doc: any) => ({
-      id: doc.id,
-      label: doc.title,
-      isActive: activeTab === "integration" && activeSubTab === doc.id,
-      onClick: () => {
-        setActiveTab("integration");
-        setActiveSubTab(doc.id);
-      },
-    }));
+  if (documents && documents.length > 0) {
+    const docsByCategory = documents.reduce((acc, doc) => {
+      const cat = doc.category || "Autre";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(doc);
+      return acc;
+    }, {} as Record<string, any[]>);
 
-    navItems.push({
-      id: "integration",
-      label: "Documentation",
-      icon: <Settings size={18} />,
-      isActive: activeTab === "integration",
-      subItems,
+    (Object.entries(docsByCategory) as [string, any[]][]).forEach(([cat, catDocs]) => {
+      if (settings.modules[cat] === false) return; // Hidden by settings
+
+      let IconComponent: any = Settings;
+      if (cat === "Framer") IconComponent = FramerIcon;
+      else if (cat === "Webflow") IconComponent = Globe;
+      else if (cat === "Figma") IconComponent = Layers;
+      else if (cat === "Branding") IconComponent = Palette;
+      else if (cat === "Design") IconComponent = PenTool;
+      else if (cat === "Copywriting") IconComponent = Type;
+
+      navItems.push({
+        id: `cat-${cat}`,
+        label: cat,
+        icon: <IconComponent size={18} />,
+        isActive: activeTab === `cat-${cat}`,
+        subItems: catDocs.map(doc => ({
+          id: doc.id,
+          label: doc.title,
+          isActive: activeTab === `cat-${cat}` && activeSubTab === doc.id,
+          onClick: () => {
+            setActiveTab(`cat-${cat}`);
+            setActiveSubTab(doc.id);
+          }
+        }))
+      });
     });
   }
 
@@ -89,16 +107,19 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
   }
 
   // Ensure active tab defaults to something available if it was hidden
-  if (activeTab === "integration" && (!documents || documents.length === 0)) {
+  if (activeTab !== "tasks" && activeTab !== "raw-docs" && !activeTab.startsWith("cat-")) {
     setActiveTab("tasks");
   } else if (activeTab === "raw-docs" && (!files || files.length === 0)) {
     setActiveTab("tasks");
   }
+  
+  const currentTabLabel = navItems.find((n: any) => n.id === activeTab)?.label || "Tâches";
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <ClientSidebar 
         projectName={project.name}
+        projectSlug={project.slug}
         logoBase64={project.logoBase64}
         items={navItems}
       />
@@ -108,7 +129,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
           <header className="flex items-center justify-between border-b pb-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
-                {activeTab === "tasks" ? "Tâches" : activeTab === "integration" ? "Intégration / Documentation" : "Documents"}
+                {currentTabLabel}
               </h1>
               {activeSubTab && (
                 <p className="text-muted-foreground mt-1 flex items-center gap-2">
@@ -153,8 +174,8 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
                   allProjects={allProjects}
                   projectUserMap={projectUserMap}
                 />
-              ) : activeTab === "integration" && activeSubTab !== "empty" && activeSubTab ? (
-                <ClientDocumentRenderer document={documents.find((d: any) => d.id === activeSubTab) || documents[0]} />
+              ) : activeTab.startsWith("cat-") && activeSubTab ? (
+                <ClientDocumentRenderer document={documents.find((d: any) => d.id === activeSubTab)} />
               ) : (
                 <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground shadow-sm">
                   Placeholder pour <strong>{activeTab} {activeSubTab ? `> ${activeSubTab}` : ''}</strong>

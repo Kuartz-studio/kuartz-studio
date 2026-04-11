@@ -6,6 +6,7 @@ import { getMyNotifications, getUnreadCount } from "@/actions/notifications";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { KuartzIcon } from "@/components/icons";
 
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -33,7 +34,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen bg-background">
       <aside className="w-64 bg-card/50 border-r flex flex-col p-4 gap-6 shrink-0">
         <div className="flex items-center justify-between">
-          <div className="font-bold text-xl px-2 tracking-tight">Kuartz Studio</div>
+          <div className="flex items-center gap-2 px-2">
+            <KuartzIcon className="w-6 h-6 text-foreground" />
+            <span className="font-bold text-xl tracking-tight">Kuartz</span>
+          </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <NotificationBell notifications={myNotifs} unreadCount={unreadCount} />

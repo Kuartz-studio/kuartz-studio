@@ -11,6 +11,7 @@ import type { ActionState } from "@/types/actions";
 const insertDocumentSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   content: z.string().optional(),
+  category: z.string().optional(),
   projectId: z.string().optional(), // Nullable — doc can exist without project
   taskId: z.string().optional(),     // If provided, auto-link via M2M
 });
@@ -51,6 +52,7 @@ export async function createDocumentAction(prevState: ActionState, formData: For
       authorId,
       title: parsed.data.title,
       slug: finalSlug,
+      category: parsed.data.category || "Autre",
       content: parsed.data.content || "",
     }).returning({ id: documents.id });
 
@@ -89,6 +91,15 @@ export async function updateDocumentContentAction(documentId: string, content: s
   if (!session) return { error: "Non autorisé" };
 
   await db.update(documents).set({ content, updatedAt: new Date() }).where(eq(documents.id, documentId));
+  revalidatePath("/documents");
+  return { data: { success: true } };
+}
+
+export async function updateDocumentCategoryAction(documentId: string, category: string): Promise<ActionState> {
+  const session = await verifySession();
+  if (!session) return { error: "Non autorisé" };
+
+  await db.update(documents).set({ category, updatedAt: new Date() }).where(eq(documents.id, documentId));
   revalidatePath("/documents");
   return { data: { success: true } };
 }

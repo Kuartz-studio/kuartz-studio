@@ -79,7 +79,7 @@ export async function getProjectsWithUsers() {
 
   // Fetch content counts for each project
   const allTasks = await db.select({ id: tasks.id, projectId: tasks.projectId }).from(tasks);
-  const allDocs = await db.select({ id: documents.id, projectId: documents.projectId }).from(documents);
+  const allDocs = await db.select({ id: documents.id, projectId: documents.projectId, category: documents.category }).from(documents);
   const allFiles = await db.select({ id: fileAttachments.id, projectId: fileAttachments.projectId }).from(fileAttachments);
 
   return allProjects.map(p => ({
@@ -94,6 +94,11 @@ export async function getProjectsWithUsers() {
       tasks: allTasks.filter(t => t.projectId === p.id).length,
       documents: allDocs.filter(d => d.projectId === p.id).length,
       files: allFiles.filter(f => f.projectId === p.id).length,
+      documentCategories: allDocs.filter(d => d.projectId === p.id).reduce((acc, doc) => {
+        const cat = doc.category || "Autre";
+        acc[cat] = (acc[cat] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
     },
   }));
 }

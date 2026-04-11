@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Trash2, Save } from "lucide-react";
-import { createDocumentAction, updateDocumentTitleAction, updateDocumentContentAction, deleteDocumentAction, linkDocumentToProjectAction } from "@/actions/documents";
+import { createDocumentAction, updateDocumentTitleAction, updateDocumentContentAction, deleteDocumentAction, linkDocumentToProjectAction, updateDocumentCategoryAction } from "@/actions/documents";
 import { ProjectSelect } from "@/components/projects/ProjectSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Shape expected from db
 interface SheetDoc {
@@ -15,6 +16,7 @@ interface SheetDoc {
   title?: string;
   content?: string | null;
   projectId?: string | null;
+  category?: string;
 }
 
 export function DocumentSheet({ 
@@ -36,12 +38,14 @@ export function DocumentSheet({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [category, setCategory] = useState("Autre");
 
   useEffect(() => {
     if (open) {
       setTitle(document?.title || "");
       setContent(document?.content || "");
       setProjectId(document?.projectId || "");
+      setCategory(document?.category || "Autre");
     }
   }, [open, document]);
 
@@ -71,6 +75,7 @@ export function DocumentSheet({
         const formData = new FormData();
         formData.append("title", title);
         formData.append("content", content);
+        formData.append("category", category);
         if (projectId) formData.append("projectId", projectId);
         if (prefillTaskId) formData.append("taskId", prefillTaskId);
 
@@ -86,6 +91,9 @@ export function DocumentSheet({
         }
         if (content !== (document.content || "")) {
           await updateDocumentContentAction(document.id, content);
+        }
+        if (category !== (document.category || "Autre")) {
+          await updateDocumentCategoryAction(document.id, category);
         }
         const oldProjectId = document.projectId || "";
         if (projectId !== oldProjectId && allProjects.length > 0) {
@@ -138,14 +146,32 @@ export function DocumentSheet({
               />
             </div>
             {allProjects.length > 0 && (
-              <div className="w-[200px] shrink-0">
-                <ProjectSelect
-                  multiple={false}
-                  value={projectId || null}
-                  onChange={handleProjectChange}
-                  projects={allProjects as any}
-                  placeholder="Attacher à un projet..."
-                />
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="w-[140px]">
+                  <Select value={category} onValueChange={(v) => setCategory(v || "Autre")}>
+                    <SelectTrigger className="shadow-none border-dashed bg-transparent h-10 w-full focus:ring-1">
+                      <SelectValue placeholder="Catégorie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Autre">Autre</SelectItem>
+                      <SelectItem value="Framer">Framer</SelectItem>
+                      <SelectItem value="Webflow">Webflow</SelectItem>
+                      <SelectItem value="Figma">Figma</SelectItem>
+                      <SelectItem value="Branding">Branding</SelectItem>
+                      <SelectItem value="Design">Design</SelectItem>
+                      <SelectItem value="Copywriting">Copywriting</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-[180px]">
+                  <ProjectSelect
+                    multiple={false}
+                    value={projectId || null}
+                    onChange={handleProjectChange}
+                    projects={allProjects as any}
+                    placeholder="Attacher à un projet..."
+                  />
+                </div>
               </div>
             )}
           </div>

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Check, RefreshCw, ExternalLink, Image as ImageIcon, CheckSquare, FileText, Globe, Settings, ChevronDown } from "lucide-react";
+import { Copy, Check, RefreshCw, ExternalLink, Image as ImageIcon, CheckSquare, FileText, Globe, Settings, ChevronDown, Layers, Palette, PenTool, Type } from "lucide-react";
+import { FramerIcon } from "@/components/icons";
 import { updatePortalSettingsAction, updatePortalSvgAction, regeneratePortalTokenAction } from "@/actions/projects";
 import Link from "next/link";
 import {
@@ -33,9 +34,8 @@ import {
 type PortalSettings = {
   modules: {
     tasks?: boolean;
-    integration?: boolean;
     files?: boolean;
-    branding?: boolean;
+    [key: string]: boolean | undefined;
   };
 };
 
@@ -46,7 +46,7 @@ type Props = {
     clientPortalToken: string | null;
     logoBase64: string | null;
     portalSettings: PortalSettings | null;
-    contentCounts: { tasks: number; documents: number; files: number };
+    contentCounts: { tasks: number; documents: number; files: number; documentCategories?: Record<string, number> };
   };
 };
 
@@ -56,7 +56,7 @@ export function PortalSettingsForm({ project }: Props) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   
   const defaultSettings: PortalSettings = {
-    modules: { tasks: true, integration: false, files: true, branding: false },
+    modules: { tasks: true, files: true },
   };
 
   const [currentSettings, setCurrentSettings] = useState<PortalSettings>(project.portalSettings || defaultSettings);
@@ -183,29 +183,38 @@ export function PortalSettingsForm({ project }: Props) {
                  );
                })()}
 
-               {/* Item Documentation */}
-               {(() => {
-                 const hasContent = project.contentCounts.documents > 0;
-                 const isActive = hasContent && !!currentSettings.modules.integration;
+               {/* Document Categories Tabs */}
+               {["Framer", "Webflow", "Figma", "Branding", "Design", "Copywriting", "Autre"].map(cat => {
+                 const hasContent = (project.contentCounts.documentCategories?.[cat] || 0) > 0;
+                 const isActive = hasContent && currentSettings.modules[cat] !== false;
+                 
+                 let IconComponent: any = Settings;
+                 if (cat === "Framer") IconComponent = FramerIcon;
+                 else if (cat === "Webflow") IconComponent = Globe;
+                 else if (cat === "Figma") IconComponent = Layers;
+                 else if (cat === "Branding") IconComponent = Palette;
+                 else if (cat === "Design") IconComponent = PenTool;
+                 else if (cat === "Copywriting") IconComponent = Type;
+
                  return (
-                   <div className={`flex items-center justify-between p-2 rounded-md transition-opacity ${!hasContent ? "opacity-30" : isActive ? "text-sidebar-foreground" : "text-muted-foreground"}`}>
+                   <div key={cat} className={`flex items-center justify-between p-2 rounded-md transition-opacity ${!hasContent ? "opacity-30 hidden" : isActive ? "text-sidebar-foreground" : "text-muted-foreground"}`}>
                      <div className="flex items-center gap-3 text-sm font-medium">
-                       <div className="shrink-0"><Settings size={16} /></div>
-                       <span>Documentation</span>
+                       <div className="shrink-0"><IconComponent className="w-4 h-4" /></div>
+                       <span>{cat}</span>
                      </div>
                      {hasContent && (
                        <div className="flex items-center gap-2">
                          <ChevronDown size={14} className="opacity-50" />
                          <Switch 
-                           checked={!!currentSettings.modules.integration}
+                           checked={currentSettings.modules[cat] !== false}
                            disabled={isPending}
-                           onCheckedChange={(c: boolean) => handleToggleModule("integration", c)}
+                           onCheckedChange={(c: boolean) => handleToggleModule(cat, c)}
                          />
                        </div>
                      )}
                    </div>
                  );
-               })()}
+               })}
 
                {/* Item Documents */}
                {(() => {
