@@ -59,7 +59,7 @@ export function PortalSettingsForm({ project }: Props) {
     modules: { tasks: true, integration: false, files: true, branding: false },
   };
 
-  const currentSettings = project.portalSettings || defaultSettings;
+  const [currentSettings, setCurrentSettings] = useState<PortalSettings>(project.portalSettings || defaultSettings);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const portalUrl = `${origin}/client/${project.slug}-${project.clientPortalToken}`;
@@ -79,6 +79,7 @@ export function PortalSettingsForm({ project }: Props) {
         [moduleKey]: checked,
       },
     };
+    setCurrentSettings(newSettings);
     startTransition(async () => {
       await updatePortalSettingsAction(project.id, newSettings);
       toast.success("Paramètres mis à jour");

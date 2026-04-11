@@ -115,7 +115,7 @@ export async function updatePortalSettingsAction(projectId: string, settings: an
   if (!session || (session.role !== "admin" && session.role !== "employee")) return;
 
   await db.update(projects).set({ portalSettings: settings }).where(eq(projects.id, projectId));
-  revalidatePath(`/projects`);
+  revalidatePath("/projects", "layout");
 }
 
 export async function updatePortalSvgAction(projectId: string, svg: string) {
