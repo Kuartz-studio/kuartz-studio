@@ -31,9 +31,11 @@ type Props = {
     done: number;
     percent: number;
   };
+  tasks: any[];
+  adminId?: string | null;
 };
 
-export function ClientPortalRoot({ project, customers, isAdmin, progressStats }: Props) {
+export function ClientPortalRoot({ project, customers, isAdmin, progressStats, tasks, adminId }: Props) {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -50,8 +52,9 @@ export function ClientPortalRoot({ project, customers, isAdmin, progressStats }:
     return (
       <ClientDashboard
         project={project}
-        currentUser={selectedCustomer || (isAdmin ? { name: "Admin", avatarBase64: null } : null)}
+        currentUser={selectedCustomer || (isAdmin ? { name: "Admin", avatarBase64: null, id: adminId || "admin", email: "" } : null)}
         isAdmin={isAdmin}
+        tasks={tasks}
       />
     );
   }

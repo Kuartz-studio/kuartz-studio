@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { projects, projectToUser, users, tasks } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { projects, projectToUser, users, tasks, taskAssignees, taskTags, tags as dbTags, comments } from "@/db/schema";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/lib/auth/session";
 import { ClientPortalRoot } from "@/components/client-portal/ClientPortalRoot";
@@ -69,13 +69,48 @@ export default async function ClientPortalPage({ params }: { params: Promise<{ p
       .map(({ id, name, avatarBase64, email }) => ({ id, name, avatarBase64, email }));
   }
 
-  const allTasks = await db
-    .select({ status: tasks.status })
-    .from(tasks)
-    .where(eq(tasks.projectId, project.id));
+  const projectTasks = await db.select().from(tasks).where(eq(tasks.projectId, project.id)).orderBy(desc(tasks.issueNumber));
+  const fetchedTaskIds = projectTasks.length > 0 ? projectTasks.map(t => t.id) : ["NONE"];
 
-  const totalTasks = allTasks.length;
-  const doneTasks = allTasks.filter((t) => t.status === "DONE").length;
+  const [allTaskAssignees, allTaskTags, allUsersRows, allTagsWithColor, allComments] = await Promise.all([
+    db.select().from(taskAssignees).where(inArray(taskAssignees.taskId, fetchedTaskIds)),
+    db.select().from(taskTags).where(inArray(taskTags.taskId, fetchedTaskIds)),
+    db.select({ id: users.id, name: users.name, email: users.email, avatarBase64: users.avatarBase64, role: users.role }).from(users),
+    db.select().from(dbTags),
+    db.select().from(comments).where(inArray(comments.taskId, fetchedTaskIds))
+  ]);
+
+  const enrichedTasks = projectTasks.map(task => {
+    const tAssigneesIds = allTaskAssignees.filter(ta => ta.taskId === task.id).map(ta => ta.userId);
+    const usersForTask = allUsersRows.filter(u => tAssigneesIds.includes(u.id));
+    const assignees = usersForTask.map(u => ({ user: u }));
+
+    const tTagIds = allTaskTags.filter(tt => tt.taskId === task.id).map(tt => tt.tagId);
+    const tagsForTask = allTagsWithColor.filter(t => tTagIds.includes(t.id));
+    const tags = tagsForTask.map(t => ({ tag: t }));
+
+    const taskComments = allComments
+      .filter(c => c.taskId === task.id)
+      .map(c => ({
+        ...c,
+        author: allUsersRows.find(u => u.id === c.authorId) || null,
+        createdAt: c.createdAt ? c.createdAt.toISOString() : null,
+      }));
+
+    return {
+      ...task,
+      targetDate: task.targetDate ? task.targetDate.toISOString() : null,
+      projectName: project.name,
+      projectSlug: project.slug,
+      projectLogoBase64: project.logoBase64,
+      assignees,
+      tags,
+      comments: taskComments,
+    };
+  });
+
+  const totalTasks = enrichedTasks.length;
+  const doneTasks = enrichedTasks.filter((t) => t.status === "DONE").length;
   const progressPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
   return (
@@ -83,6 +118,8 @@ export default async function ClientPortalPage({ params }: { params: Promise<{ p
       project={project}
       customers={customerUsers}
       isAdmin={isAdmin}
+      adminId={session?.userId || null}
+      tasks={enrichedTasks}
       progressStats={{
         total: totalTasks,
         done: doneTasks,

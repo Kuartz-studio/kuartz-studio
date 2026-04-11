@@ -5,6 +5,7 @@ import { CheckSquare, FileText, Link as LinkIcon, Settings } from "lucide-react"
 import { ClientSidebar } from "./ClientSidebar";
 import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
+import { ClientTasksView } from "./ClientTasksView";
 
 type Props = {
   project: {
@@ -15,11 +16,12 @@ type Props = {
     clientPortalToken: string | null;
     portalSettings: any | null; // will be used in step 4
   };
-  currentUser: { name: string; avatarBase64: string | null } | null;
+  currentUser: { id: string; name: string; avatarBase64: string | null; email: string } | null;
   isAdmin: boolean;
+  tasks: any[];
 };
 
-export function ClientDashboard({ project, currentUser, isAdmin }: Props) {
+export function ClientDashboard({ project, currentUser, isAdmin, tasks }: Props) {
   const [activeTab, setActiveTab] = useState("tasks");
   const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
 
@@ -138,9 +140,20 @@ export function ClientDashboard({ project, currentUser, isAdmin }: Props) {
               transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
               className="flex flex-col gap-6"
             >
-              <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground shadow-sm">
-                Placeholder pour <strong>{activeTab} {activeSubTab ? `> ${activeSubTab}` : ''}</strong>
-              </div>
+              {activeTab === "tasks" && !activeSubTab ? (
+                <ClientTasksView 
+                  tasks={tasks}
+                  projectId={project.id}
+                  projectSlug={project.slug}
+                  portalToken={project.clientPortalToken || ""}
+                  currentUser={currentUser}
+                  isAdmin={isAdmin}
+                />
+              ) : (
+                <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground shadow-sm">
+                  Placeholder pour <strong>{activeTab} {activeSubTab ? `> ${activeSubTab}` : ''}</strong>
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
