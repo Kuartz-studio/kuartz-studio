@@ -57,6 +57,11 @@ export function NewTaskDialog({
   const [targetDate, setTargetDate] = useState<Date | undefined>(undefined);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
   
+  const [status, setStatus] = useState("TODO");
+  const [priority, setPriority] = useState(2);
+  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
+  const [priorityPopoverOpen, setPriorityPopoverOpen] = useState(false);
+  
   const selectedProject = projects?.find(p => p.id === selectedProjectId);
   
   const visibleUsers = users?.filter(u => {
@@ -91,7 +96,6 @@ export function NewTaskDialog({
               <input type="hidden" name="projectId" value={projectId} />
             ) : (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="projectId" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projet</Label>
                 <input type="hidden" name="projectId" value={selectedProjectId} />
                 <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
                   <PopoverTrigger
@@ -110,7 +114,7 @@ export function NewTaskDialog({
                         <span className="truncate">{selectedProject.name}</span>
                       </span>
                     ) : (
-                      <span>Sélectionner...</span>
+                      <span>Sélectionner le projet...</span>
                     )}
                     <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
                   </PopoverTrigger>
@@ -124,7 +128,7 @@ export function NewTaskDialog({
                             <CommandItem
                               key={p.id}
                               value={p.name}
-                              onSelect={() => { setSelectedProjectId(p.id); setProjectPopoverOpen(false); }}
+                              onSelect={() => { setSelectedProjectId(p.id); setProjectPopoverOpen(false); setSelectedAssignees([]); }}
                             >
                               <div className="flex items-center gap-2 flex-1">
                                 {p.logoBase64 ? (
@@ -147,17 +151,17 @@ export function NewTaskDialog({
 
             {/* Date d'échéance */}
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date d'échéance</Label>
               <input type="hidden" name="targetDate" value={targetDate ? targetDate.toISOString() : ""} />
               <Popover>
                 <PopoverTrigger
+                  disabled={!selectedProjectId}
                   className={cn(
-                    "flex w-full items-center justify-start rounded-lg border border-input bg-transparent px-3 h-10 text-sm transition-colors outline-none",
+                    "flex w-full items-center justify-start rounded-lg border border-input bg-transparent px-3 h-10 text-sm transition-colors outline-none disabled:opacity-50 disabled:cursor-not-allowed",
                     !targetDate && "text-muted-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4 opacity-50 shrink-0" />
-                  {targetDate ? format(targetDate, "d MMM yyyy", { locale: fr }) : <span className="truncate">Choisir une date</span>}
+                  {targetDate ? format(targetDate, "d MMM yyyy", { locale: fr }) : <span className="truncate">Date d'échéance...</span>}
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
@@ -182,88 +186,113 @@ export function NewTaskDialog({
             </div>
           )}
 
-          {/* LIGNE 2: Titre et Description - Rounded Container */}
-          <div className="flex flex-col rounded-lg shadow-sm border border-input focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden transition-all">
+          {/* LIGNE 2: Titre et Description - Stacked Inputs */}
+          <div className="flex flex-col w-full relative">
             <Input 
               id="title" name="title" required placeholder="Titre" 
-              className="border-0 border-b border-input rounded-none shadow-none focus-visible:ring-0 px-4 py-3 h-12 text-sm font-medium" 
+              disabled={!selectedProjectId}
+              className="relative z-10 border-input rounded-t-lg rounded-b-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary px-4 py-3 h-12 text-sm font-medium focus-visible:z-20 disabled:opacity-50" 
             />
             {state?.fieldErrors?.title && (
-              <span className="text-xs text-destructive px-4 py-1">{state.fieldErrors.title[0]}</span>
+              <span className="text-xs text-destructive px-4 py-1 relative z-20 bg-background">{state.fieldErrors.title[0]}</span>
             )}
             <Textarea 
               id="description" name="description" rows={3} placeholder="Description (optionnelle)" 
-              className="border-0 rounded-none shadow-none focus-visible:ring-0 min-h-[90px] px-4 py-3 resize-y bg-transparent" 
+              disabled={!selectedProjectId}
+              className="relative z-10 -mt-[1px] border-input rounded-t-none rounded-b-lg shadow-sm focus-visible:ring-1 focus-visible:ring-primary min-h-[90px] px-4 py-3 resize-y bg-transparent focus-visible:z-20 disabled:opacity-50 border-t-transparent focus-visible:border-t-input" 
             />
           </div>
 
           {/* LIGNE 3: Statut, Priorité, Assigné(s) */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Statut</Label>
-              <Select defaultValue="TODO" name="status">
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map(s => (
-                    <SelectItem key={s.value} value={s.value}>
-                      <div className="flex items-center gap-2">
-                        <StatusIcon value={s.value} />
-                        <span style={{ color: s.color }} className="text-sm">{s.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <input type="hidden" name="status" value={status} />
+              <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
+                <PopoverTrigger 
+                  disabled={!selectedProjectId}
+                  className="inline-flex items-center justify-center p-1.5 h-10 w-10 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg border border-input shadow-sm bg-transparent hover:bg-muted outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={STATUS_OPTIONS.find(s => s.value === status)?.label}
+                >
+                  <StatusIcon value={status} />
+                </PopoverTrigger>
+                <PopoverContent className="w-[180px] p-0" align="start">
+                  <Command>
+                    <CommandList>
+                      <CommandGroup>
+                        {STATUS_OPTIONS.map((s) => (
+                          <CommandItem key={s.value} onSelect={() => { setStatus(s.value); setStatusPopoverOpen(false); }} className="gap-2">
+                            <StatusIcon value={s.value} />
+                            <span className="text-xs" style={{ color: s.color }}>{s.label}</span>
+                            {s.value === status && <Check className="ml-auto h-3.5 w-3.5" />}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Priorité</Label>
-              <Select defaultValue="2" name="priority">
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Priorité" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITY_OPTIONS.map(p => (
-                    <SelectItem key={p.value} value={p.value}>
-                      <div className="flex items-center gap-2">
-                        <PriorityIcon value={Number(p.value)} />
-                        <span style={{ color: p.color }} className="text-sm">{p.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-2">
+              <input type="hidden" name="priority" value={priority} />
+              <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
+                <PopoverTrigger 
+                  disabled={!selectedProjectId}
+                  className="inline-flex items-center justify-center p-1.5 h-10 w-10 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg border border-input shadow-sm bg-transparent hover:bg-muted outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={PRIORITY_OPTIONS.find(p => p.value === priority.toString())?.label}
+                >
+                  <PriorityIcon value={priority} />
+                </PopoverTrigger>
+                <PopoverContent className="w-[170px] p-0" align="start">
+                  <Command>
+                    <CommandList>
+                      <CommandGroup>
+                        {PRIORITY_OPTIONS.map((p) => (
+                          <CommandItem key={p.value} onSelect={() => { setPriority(Number(p.value)); setPriorityPopoverOpen(false); }} className="gap-2">
+                            <PriorityIcon value={Number(p.value)} />
+                            <span className="text-xs" style={{ color: p.color }}>{p.label}</span>
+                            {p.value === priority.toString() && <Check className="ml-auto h-3.5 w-3.5" />}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigné(s)</Label>
+            <div className="flex items-center gap-2 flex-1">
               {selectedAssignees.map(id => (
                 <input key={id} type="hidden" name="assignees" value={id} />
               ))}
               <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
-                <PopoverTrigger className="flex h-10 w-full items-center justify-start rounded-md border border-input bg-transparent px-3 text-sm outline-none transition-colors overflow-hidden truncate">
+                <PopoverTrigger 
+                  disabled={!selectedProjectId} 
+                  className={cn(
+                    "flex h-10 w-auto min-w-[40px] items-center justify-start rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted shadow-sm",
+                    !selectedAssignees.length && "text-muted-foreground"
+                  )}
+                >
                   {selectedAssignees.length > 0 ? (
-                    <div className="flex items-center truncate max-w-full">
-                      <div className="flex -space-x-1 mr-2 shrink-0">
+                    <div className="flex items-center max-w-full">
+                      <div className="flex -space-x-1 shrink-0">
                         {selectedAssignees.slice(0, 3).map(id => {
                           const u = users?.find(user => user.id === id);
                           if (!u) return null;
-                          return <div key={u.id} className="w-6 h-6 rounded-full overflow-hidden border bg-background"><AvatarCustom name={u.name} avatarBase64={u.avatarBase64} /></div>;
+                          return <div key={u.id} className="w-6 h-6 rounded-full overflow-hidden border bg-background shrink-0"><AvatarCustom name={u.name} avatarBase64={u.avatarBase64} /></div>;
                         })}
                         {selectedAssignees.length > 3 && (
-                          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[var(--color-muted)] text-[9px] font-bold border shrink-0">
+                          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[var(--color-muted)] text-[9px] font-bold border shrink-0 z-10">
                             +{selectedAssignees.length - 3}
                           </span>
                         )}
                       </div>
                       {selectedAssignees.length === 1 && (
-                          <span className="truncate flex-1">{users?.find(u => u.id === selectedAssignees[0])?.name}</span>
+                          <span className="truncate flex-1 ml-2 text-foreground font-medium text-xs">{users?.find(u => u.id === selectedAssignees[0])?.name}</span>
                       )}
                     </div>
                   ) : (
-                    <span className="text-muted-foreground">Assigner...</span>
+                    <span className="text-muted-foreground whitespace-nowrap px-1">Assignation...</span>
                   )}
                 </PopoverTrigger>
                 <PopoverContent className="w-[220px] p-0" align="start">
@@ -294,7 +323,7 @@ export function NewTaskDialog({
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-2 mt-4 pt-2">
             <Button variant="outline" type="button" onClick={() => setOpen(false)} disabled={isPending}>Annuler</Button>
             <Button type="submit" disabled={isPending || (!projectId && !selectedProjectId)}>{isPending ? "Création..." : "Ajouter la tâche"}</Button>
           </div>
