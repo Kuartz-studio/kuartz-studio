@@ -31,8 +31,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const unreadCount = await getUnreadCount();
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="w-64 bg-card/50 border-r flex flex-col p-4 gap-6 shrink-0">
+    <div className="flex h-dvh overflow-hidden bg-background">
+      <aside className="w-64 bg-card/50 border-r flex flex-col p-4 gap-6 shrink-0 overflow-y-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 px-2">
             <KuartzIcon className="w-6 h-6 text-foreground" />
@@ -85,7 +85,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </div>
       </aside>
-      <main className="flex-1 p-8 overflow-x-hidden">
+      <main className="flex-1 overflow-y-auto p-8">
         <div className="max-w-6xl mx-auto">
           {children}
         </div>
