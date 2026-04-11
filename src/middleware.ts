@@ -5,6 +5,11 @@ import { verifySession } from '@/lib/auth/session';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  // Client portal is fully public — no auth required
+  if (pathname.startsWith('/client')) {
+    return NextResponse.next();
+  }
+
   const isAuthRoute = pathname.startsWith('/login');
   const isProtectedRoute = pathname.startsWith('/tasks') || pathname.startsWith('/projects') || pathname.startsWith('/users');
   

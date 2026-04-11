@@ -256,9 +256,9 @@ src/
 - ❌ PAS de console.log en production — utiliser un logger structuré si nécessaire
 
 ### Git & Workflow
-- ❌ NE JAMAIS faire de `git commit` ou de `git push` sans l'autorisation explicite de l'utilisateur.
-- ❌ Toujours attendre la demande de l'utilisateur avant d'enregistrer localement (commit) ou de pousser le code (push).
-- ❌ L'autorisation fournie par l'utilisateur ne vaut que pour UN SEUL `git commit` ou UN SEUL `git push` (1 action = 1 crédit). Tu dois impérativement redemander l'autorisation avant chaque manipulation Git.
+- ❌ Tu n'as STRICTEMENT JAMAIS le droit de faire un `git push`. Jamais. Aucune exception.
+- ❌ Le `git commit` est autorisé UNIQUEMENT avec l'accord explicite de l'utilisateur.
+- ❌ L'autorisation fournie par l'utilisateur ne vaut que pour UN SEUL `git commit` (1 action = 1 crédit). Tu dois impérativement redemander l'autorisation avant chaque nouveau commit local.
 
 ## Mindset d'évolution incrémentale
 

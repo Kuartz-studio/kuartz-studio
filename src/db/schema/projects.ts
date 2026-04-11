@@ -11,6 +11,7 @@ export const projects = sqliteTable("project", {
   description: text("description"),
   url: text("url"),
   logoBase64: text("logo_base64"),
+  clientPortalToken: text("client_portal_token").unique().$defaultFn(() => crypto.randomUUID().replace(/-/g, "").slice(0, 12)),
   priority: integer("priority").default(0),
   targetDate: integer("target_date", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
