@@ -13,7 +13,7 @@ type Props = {
     id: string;
     name: string;
     slug: string;
-    iconSvg: string | null;
+    logoBase64: string | null;
     clientPortalToken: string | null;
     portalSettings: any | null;
   };
@@ -21,21 +21,22 @@ type Props = {
   isAdmin: boolean;
   tasks: any[];
   documents: any[];
+  files?: any[];
   allTags: any[];
   allUsers: any[];
   allProjects: any[];
   projectUserMap: Record<string, string[]>;
 };
 
-export function ClientDashboard({ project, currentUser, isAdmin, tasks, documents, allTags, allUsers, allProjects, projectUserMap }: Props) {
+export function ClientDashboard({ project, currentUser, isAdmin, tasks, documents, files = [], allTags, allUsers, allProjects, projectUserMap }: Props) {
   const [activeTab, setActiveTab] = useState("tasks");
   const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
 
-  const settings = project.portalSettings || { modules: { tasks: true, integration: false, branding: false } };
+  const settings = project.portalSettings || { modules: { tasks: true, integration: false, branding: false, files: true } };
 
   const navItems: any[] = [];
 
-  if (settings.modules.tasks) {
+  if (settings.modules.tasks !== false) {
     navItems.push({
       id: "tasks",
       label: "Tâches",
@@ -48,64 +49,57 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
     });
   }
 
-  if (settings.modules.integration) {
-    let subItems = [];
-    if (documents && documents.length > 0) {
-      subItems = documents.map((doc: any) => ({
-        id: doc.id,
-        label: doc.title,
-        isActive: activeTab === "integration" && activeSubTab === doc.id,
-        onClick: () => {
-          setActiveTab("integration");
-          setActiveSubTab(doc.id);
-        },
-      }));
-    } else {
-      subItems = [
-        {
-          id: "empty",
-          label: "Aucun document",
-          isActive: activeTab === "integration" && activeSubTab === "empty",
-          onClick: () => {
-            setActiveTab("integration");
-            setActiveSubTab("empty");
-          },
-        }
-      ];
-    }
+  if (settings.modules.integration && documents && documents.length > 0) {
+    let subItems = documents.map((doc: any) => ({
+      id: doc.id,
+      label: doc.title,
+      isActive: activeTab === "integration" && activeSubTab === doc.id,
+      onClick: () => {
+        setActiveTab("integration");
+        setActiveSubTab(doc.id);
+      },
+    }));
 
     navItems.push({
       id: "integration",
-      label: "Intégration",
+      label: "Documentation",
       icon: <Settings size={18} />,
       isActive: activeTab === "integration",
       subItems,
     });
   }
 
-  // Always show "Documents" (external links)
-  navItems.push({
-    id: "raw-docs",
-    label: "Documents",
-    icon: <FileText size={18} />,
-    isActive: activeTab === "raw-docs",
-    subItems: [
-      {
-        id: "drive",
-        label: "Dossier Drive GDrive",
-        isActive: false,
-        onClick: () => {
-          window.open("https://drive.google.com", "_blank");
-        },
+  if (settings.modules.files !== false && files && files.length > 0) {
+    let subItems = files.map((file: any) => ({
+      id: file.id,
+      label: file.title,
+      isActive: false, // We just open in new tab
+      onClick: () => {
+        window.open(file.url, "_blank");
       },
-    ],
-  });
+    }));
+
+    navItems.push({
+      id: "raw-docs",
+      label: "Documents",
+      icon: <FileText size={18} />,
+      isActive: activeTab === "raw-docs",
+      subItems,
+    });
+  }
+
+  // Ensure active tab defaults to something available if it was hidden
+  if (activeTab === "integration" && (!documents || documents.length === 0)) {
+    setActiveTab("tasks");
+  } else if (activeTab === "raw-docs" && (!files || files.length === 0)) {
+    setActiveTab("tasks");
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <ClientSidebar 
         projectName={project.name}
-        iconSvg={project.iconSvg}
+        logoBase64={project.logoBase64}
         items={navItems}
       />
       

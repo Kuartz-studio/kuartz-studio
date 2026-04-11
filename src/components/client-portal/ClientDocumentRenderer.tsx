@@ -1,7 +1,6 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+
 
 type DocumentData = {
   id: string;
@@ -23,11 +22,10 @@ export function ClientDocumentRenderer({ document }: { document: DocumentData })
 
   return (
     <div className="bg-card rounded-xl border p-8 md:p-12 shadow-sm text-left w-full mt-4">
-      <article className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {document.content}
-        </ReactMarkdown>
-      </article>
+      <article 
+        className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-muted prose-pre:text-muted-foreground prose-headings:font-bold"
+        dangerouslySetInnerHTML={{ __html: document.content }}
+      />
     </div>
   );
 }

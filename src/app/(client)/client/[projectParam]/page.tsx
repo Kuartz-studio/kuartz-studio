@@ -132,6 +132,10 @@ export default async function ClientPortalPage({ params }: { params: Promise<{ p
     updatedAt: doc.updatedAt ? doc.updatedAt.toISOString() : null,
   }));
 
+  const { fileAttachments } = await import("@/db/schema");
+  const projectFiles = await db.select().from(fileAttachments).where(eq(fileAttachments.projectId, project.id)).orderBy(desc(fileAttachments.createdAt));
+  const serializedFiles = projectFiles.map(f => ({ ...f, createdAt: f.createdAt ? f.createdAt.toISOString() : null }));
+
   return (
     <ClientPortalRoot
       project={project}
@@ -144,6 +148,7 @@ export default async function ClientPortalPage({ params }: { params: Promise<{ p
       allProjects={[project]}
       projectUserMap={projectUserMap}
       documents={serializedDocs}
+      files={serializedFiles}
       progressStats={{
         total: totalTasks,
         done: doneTasks,

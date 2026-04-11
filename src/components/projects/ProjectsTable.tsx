@@ -23,6 +23,7 @@ interface ProjectRow {
   iconSvg: string | null;
   portalSettings: any | null;
   users: ProjectUser[];
+  contentCounts: { tasks: number; documents: number; files: number };
 }
 
 const PRIORITY_OPTIONS = [
@@ -338,8 +339,8 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
 
       {/* Slide-over Settings */}
       <Sheet open={!!settingsProject} onOpenChange={(val: boolean) => !val && setSettingsProject(null)}>
-        <SheetContent className="w-[720px] max-w-[90vw] overflow-y-auto overflow-x-hidden px-8 py-8" side="right">
-          <SheetHeader className="mb-6">
+        <SheetContent className="w-[75%] sm:w-[75%] sm:max-w-[720px] !max-w-[720px] overflow-y-auto overflow-x-hidden px-8 py-8" side="right">
+          <SheetHeader className="sr-only">
             <SheetTitle>Configuration : {settingsProject?.name}</SheetTitle>
             <SheetDescription>Gérez l'accès au portail client et les personnalisations.</SheetDescription>
           </SheetHeader>

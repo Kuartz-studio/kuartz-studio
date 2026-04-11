@@ -11,7 +11,7 @@ import { getTaskComments } from "@/actions/comments";
 import { getTaskAttachments } from "@/actions/file-attachments";
 import { TaskComments } from "@/components/comments/TaskComments";
 import { TaskAttachments } from "@/components/attachments/TaskAttachments";
-import { NewDocumentDialog } from "@/components/documents/NewDocumentDialog";
+import { TaskDocumentsCard } from "@/components/documents/TaskDocumentsCard";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   BACKLOG: { label: "Backlog", variant: "secondary" },
@@ -64,6 +64,8 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ tas
     .innerJoin(documents, eq(documentToTask.documentId, documents.id))
     .where(eq(documentToTask.taskId, taskId));
 
+  const allProjects = await db.select({ id: projects.id, name: projects.name, logoBase64: projects.logoBase64 }).from(projects).orderBy(projects.name);
+
   const status = statusMap[task.status] || { label: task.status, variant: "secondary" as const };
 
   return (
@@ -112,30 +114,12 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ tas
           </Card>
 
           {/* Documents */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Documents</CardTitle>
-              <NewDocumentDialog projectId={task.projectId} taskId={taskId} />
-            </CardHeader>
-            <CardContent>
-              {linkedDocs.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">Aucun document lié à cette tâche.</p>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {linkedDocs.map(doc => (
-                    <Link
-                      key={doc.id}
-                      href={`/documents/${doc.slug}`}
-                      className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors text-sm text-primary hover:underline"
-                    >
-                      <FileText size={16} className="text-muted-foreground flex-shrink-0" />
-                      {doc.title}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <TaskDocumentsCard 
+            linkedDocs={linkedDocs} 
+            allProjects={allProjects} 
+            projectId={task.projectId} 
+            taskId={taskId} 
+          />
         </div>
 
         {/* Sidebar */}

@@ -17,11 +17,11 @@ type NavItem = {
 
 type Props = {
   projectName: string;
-  iconSvg: string | null;
+  logoBase64: string | null;
   items: NavItem[];
 };
 
-export function ClientSidebar({ projectName, iconSvg, items }: Props) {
+export function ClientSidebar({ projectName, logoBase64, items }: Props) {
   // Garder trace des menus déroulants ouverts
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
@@ -33,14 +33,11 @@ export function ClientSidebar({ projectName, iconSvg, items }: Props) {
     <aside className="w-64 border-r bg-card/50 flex flex-col shrink-0 overflow-y-auto">
       {/* Header Logo & Nom du Projet */}
       <div className="h-16 px-4 flex items-center gap-3 border-b shrink-0">
-        <div className="w-8 h-8 flex items-center justify-center shrink-0 text-foreground">
-          {iconSvg ? (
-            <div 
-              className="w-6 h-6 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:fill-current" 
-              dangerouslySetInnerHTML={{ __html: iconSvg }} 
-            />
+        <div className="w-8 h-8 flex items-center justify-center shrink-0 text-foreground bg-transparent rounded-md overflow-hidden border shadow-sm">
+          {logoBase64 ? (
+            <img src={logoBase64} alt={projectName} className="w-full h-full object-cover" />
           ) : (
-            <span className="font-bold text-lg tracking-tight bg-sidebar-foreground text-background w-full h-full rounded-md flex items-center justify-center">{projectName.charAt(0).toUpperCase()}</span>
+            <span className="font-bold text-lg tracking-tight bg-sidebar-foreground text-background w-full h-full flex items-center justify-center">{projectName.charAt(0).toUpperCase()}</span>
           )}
         </div>
         <span className="font-bold tracking-tight truncate flex-1">{projectName}</span>

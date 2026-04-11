@@ -5,16 +5,37 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Check, RefreshCw, ExternalLink, Image as ImageIcon, CheckSquare, FileText, Globe } from "lucide-react";
+import { Copy, Check, RefreshCw, ExternalLink, Image as ImageIcon, CheckSquare, FileText, Globe, Settings, ChevronDown } from "lucide-react";
 import { updatePortalSettingsAction, updatePortalSvgAction, regeneratePortalTokenAction } from "@/actions/projects";
 import Link from "next/link";
-import { toast } from "sonner"; // Assuming Sonner is used
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose
+} from "@/components/ui/dialog";
 
 type PortalSettings = {
   modules: {
-    tasks: boolean;
-    integration: boolean;
-    branding: boolean;
+    tasks?: boolean;
+    integration?: boolean;
+    files?: boolean;
+    branding?: boolean;
   };
 };
 
@@ -23,18 +44,19 @@ type Props = {
     id: string;
     slug: string;
     clientPortalToken: string | null;
-    iconSvg: string | null;
+    logoBase64: string | null;
     portalSettings: PortalSettings | null;
+    contentCounts: { tasks: number; documents: number; files: number };
   };
 };
 
 export function PortalSettingsForm({ project }: Props) {
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
-  const [svgCode, setSvgCode] = useState(project.iconSvg || "");
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
   
   const defaultSettings: PortalSettings = {
-    modules: { tasks: true, integration: false, branding: false },
+    modules: { tasks: true, integration: false, files: true, branding: false },
   };
 
   const currentSettings = project.portalSettings || defaultSettings;
@@ -63,42 +85,30 @@ export function PortalSettingsForm({ project }: Props) {
     });
   };
 
-  const handleSaveSvg = () => {
+  const handleRegenerateToken = () => {
     startTransition(async () => {
-      const res = await updatePortalSvgAction(project.id, svgCode);
-      if (res?.error) {
-        toast.error(res.error);
-      } else {
-        toast.success("Logo mis à jour");
-      }
+      await regeneratePortalTokenAction(project.id);
+      toast.success("Lien secret régénéré avec succès");
+      setIsAlertOpen(false);
     });
   };
 
-  const handleRegenerateToken = () => {
-    if (confirm("Attention: L'ancien lien cessera de fonctionner immédiatement. Continuer ?")) {
-      startTransition(async () => {
-        await regeneratePortalTokenAction(project.id);
-        toast.success("Lien secret régénéré avec succès");
-      });
-    }
-  };
-
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
       
-      {/* SECTION : LIEN SECRET */}
-      <section className="flex flex-col gap-3">
+      {/* SECTION UNIQUE : REGLAGES PRINCIPAUX */}
+      <section className="flex flex-col gap-6">
         <header>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Globe className="text-[var(--primary)] shrink-0" size={18} />
-            Accès Portail Client
-          </h3>
+          <h2 className="text-xl font-bold tracking-tight text-[var(--color-foreground)]">
+            Réglages principaux
+          </h2>
           <p className="text-sm text-[var(--color-muted-foreground)] leading-relaxed mt-1">
-            Partagez ce lien sécurisé avec vos clients pour leur donner accès au portail.
+            Gérez le lien d'accès sécurisé et la visibilité des onglets pour ce portail espace client.
           </p>
         </header>
         
-        <div className="flex items-center border border-[var(--color-border)] rounded-lg bg-muted/30 overflow-hidden mt-1 focus-within:ring-2 focus-within:ring-[var(--primary)]/30 focus-within:border-[var(--primary)]/50 transition-all">
+        {/* Lien Input */}
+        <div className="flex items-center border border-[var(--color-border)] rounded-lg bg-muted/30 overflow-hidden focus-within:ring-2 focus-within:ring-[var(--primary)]/30 focus-within:border-[var(--primary)]/50 transition-all">
           <input 
             type="text" 
             readOnly 
@@ -115,7 +125,7 @@ export function PortalSettingsForm({ project }: Props) {
               {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
             </button>
             <button
-              onClick={handleRegenerateToken}
+              onClick={() => setIsAlertOpen(true)}
               disabled={isPending}
               className="px-3 py-2.5 text-[var(--color-muted-foreground)] hover:text-orange-500 hover:bg-orange-500/10 transition-colors border-l border-[var(--color-border)] disabled:opacity-50"
               title="Régénérer le lien secret"
@@ -132,115 +142,128 @@ export function PortalSettingsForm({ project }: Props) {
             </Link>
           </div>
         </div>
-      </section>
 
-      <hr className="border-[var(--color-border)]" />
+        {/* Fausse Sidebar de GAUCHE (Schéma) */}
+        <div className="flex border border-[var(--color-border)] rounded-xl overflow-hidden bg-card shadow-sm max-w-3xl">
+          <div className="w-[320px] bg-sidebar flex flex-col shrink-0 border-r border-[var(--color-border)] py-4 opacity-90 relative">
+             
+             {/* Header Logo */}
+             <div className="px-4 flex items-center gap-3 shrink-0 mb-6">
+                <div className="w-8 h-8 flex flex-col items-center justify-center shrink-0 bg-transparent rounded-md shadow-sm border overflow-hidden">
+                  {project.logoBase64 ? (
+                    <img src={project.logoBase64} alt={project.slug} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="font-bold text-sm text-sidebar-foreground">{project.slug.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <span className="font-bold tracking-tight truncate flex-1 text-sidebar-foreground">{project.slug.toUpperCase()}</span>
+             </div>
 
-      {/* SECTION : MODULES */}
-      <section className="flex flex-col gap-4">
-        <header>
-          <h3 className="text-lg font-semibold">Modules Actifs</h3>
-          <p className="text-sm text-[var(--color-muted-foreground)] leading-relaxed mt-1">
-            Personnalisez l'expérience client en activant ou masquant certains onglets dans son portail.
-          </p>
-        </header>
+             <div className="px-3 flex flex-col gap-2">
+               
+               {/* Item Tâches */}
+               {(() => {
+                 const hasContent = project.contentCounts.tasks > 0;
+                 const isActive = hasContent && currentSettings.modules.tasks !== false;
+                 return (
+                   <div className={`flex items-center justify-between p-2 rounded-md transition-opacity ${!hasContent ? "opacity-30" : isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>
+                     <div className="flex items-center gap-3 text-sm font-medium">
+                       <div className="shrink-0"><CheckSquare size={16} /></div>
+                       <span>Tâches</span>
+                     </div>
+                     {hasContent && (
+                       <Switch 
+                         checked={currentSettings.modules.tasks !== false}
+                         disabled={isPending}
+                         onCheckedChange={(c: boolean) => handleToggleModule("tasks", c)}
+                       />
+                     )}
+                   </div>
+                 );
+               })()}
 
-        <div className="border border-[var(--color-border)] rounded-xl divide-y divide-[var(--color-border)] bg-card shadow-sm mt-2">
-          
-          <div className="flex p-4 hover:bg-[var(--color-muted)]/30 transition-colors">
-            <div className="mr-4 mt-0.5 w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-              <CheckSquare size={16} />
-            </div>
-            <div className="flex-1 flex flex-col justify-center">
-              <Label className="text-base font-medium cursor-pointer">Module Tâches</Label>
-              <p className="text-sm text-[var(--color-muted-foreground)] mt-0.5">
-                Le client pourra voir l'avancement, filtrer les tâches et valider/commenter le travail.
-              </p>
-            </div>
-            <div className="ml-4 flex items-center">
-              <Switch 
-                checked={currentSettings.modules.tasks}
-                disabled={isPending}
-                onCheckedChange={(c: boolean) => handleToggleModule("tasks", c)}
-              />
-            </div>
+               {/* Item Documentation */}
+               {(() => {
+                 const hasContent = project.contentCounts.documents > 0;
+                 const isActive = hasContent && !!currentSettings.modules.integration;
+                 return (
+                   <div className={`flex items-center justify-between p-2 rounded-md transition-opacity ${!hasContent ? "opacity-30" : isActive ? "text-sidebar-foreground" : "text-muted-foreground"}`}>
+                     <div className="flex items-center gap-3 text-sm font-medium">
+                       <div className="shrink-0"><Settings size={16} /></div>
+                       <span>Documentation</span>
+                     </div>
+                     {hasContent && (
+                       <div className="flex items-center gap-2">
+                         <ChevronDown size={14} className="opacity-50" />
+                         <Switch 
+                           checked={!!currentSettings.modules.integration}
+                           disabled={isPending}
+                           onCheckedChange={(c: boolean) => handleToggleModule("integration", c)}
+                         />
+                       </div>
+                     )}
+                   </div>
+                 );
+               })()}
+
+               {/* Item Documents */}
+               {(() => {
+                 const hasContent = project.contentCounts.files > 0;
+                 const isActive = hasContent && currentSettings.modules.files !== false;
+                 return (
+                   <div className={`flex items-center justify-between p-2 rounded-md transition-opacity ${!hasContent ? "opacity-30" : isActive ? "text-sidebar-foreground" : "text-muted-foreground"}`}>
+                     <div className="flex items-center gap-3 text-sm font-medium">
+                       <div className="shrink-0"><FileText size={16} /></div>
+                       <span>Documents</span>
+                     </div>
+                     {hasContent && (
+                       <div className="flex items-center gap-2">
+                         <ChevronDown size={14} className="opacity-50" />
+                         <Switch 
+                           checked={currentSettings.modules.files !== false}
+                           disabled={isPending}
+                           onCheckedChange={(c: boolean) => handleToggleModule("files", c)}
+                         />
+                       </div>
+                     )}
+                   </div>
+                 );
+               })()}
+
+             </div>
           </div>
 
-          <div className="flex p-4 hover:bg-[var(--color-muted)]/30 transition-colors">
-            <div className="mr-4 mt-0.5 w-8 h-8 rounded-full bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
-              <FileText size={16} />
-            </div>
-            <div className="flex-1 flex flex-col justify-center">
-              <Label className="text-base font-medium cursor-pointer">Module Documentation</Label>
-              <p className="text-sm text-[var(--color-muted-foreground)] mt-0.5">
-                Affiche l'onglet "Intégration" avec les documents riches liés au projet.
-              </p>
-            </div>
-            <div className="ml-4 flex items-center">
-              <Switch 
-                checked={currentSettings.modules.integration}
-                disabled={isPending}
-                onCheckedChange={(c: boolean) => handleToggleModule("integration", c)}
-              />
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      <hr className="border-[var(--color-border)]" />
-
-      {/* SECTION : BRANDING INCORPORATION */}
-      <section className="flex flex-col gap-4">
-        <header>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <ImageIcon className="text-[var(--color-muted-foreground)] shrink-0" size={18} />
-            Marque et Design
-          </h3>
-          <p className="text-sm text-[var(--color-muted-foreground)] leading-relaxed mt-1">
-            Adaptez l'apparence du portail aux couleurs de votre client de façon premium.
-          </p>
-        </header>
-
-        <div className="flex flex-col md:flex-row gap-6 items-start mt-2 border p-5 rounded-xl bg-card shadow-sm">
-          {/* APERCU GAUCHE */}
-          <div className="flex flex-col items-center gap-3 shrink-0">
-            <span className="text-xs uppercase tracking-widest font-semibold text-[var(--color-muted-foreground)]">Aperçu Menu</span>
-            <div className="w-16 h-16 rounded-xl bg-black flex items-center justify-center p-3 shadow-md">
-              <div 
-                className="w-full h-full flex items-center justify-center text-white [&>svg]:w-full [&>svg]:h-full [&>svg]:fill-current transition-all"
-                dangerouslySetInnerHTML={{ __html: svgCode || `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" opacity="0.2"/></svg>` }}
-              />
-            </div>
-          </div>
-          
-          {/* ZONE TEXTE DROITE */}
-          <div className="flex-1 flex flex-col gap-3 min-w-0 w-full">
-            <Label className="text-sm">Code SVG du logo (Monochrome)</Label>
-            <Textarea 
-              value={svgCode}
-              onChange={(e) => setSvgCode(e.target.value)}
-              placeholder="<svg viewBox='0 0 24 24'>...</svg>"
-              className="font-mono text-[11px] h-28 resize-none focus-visible:ring-1 bg-muted/40"
-            />
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-[11px] text-[var(--color-muted-foreground)] leading-tight max-w-[250px]">
-                Le code SVG sera automatiquement recoloré en blanc cassé dans la zone client.
-              </p>
-              <Button 
-                size="sm"
-                variant="secondary"
-                onClick={handleSaveSvg} 
-                disabled={isPending || svgCode === (project.iconSvg || "")}
-                className="gap-2 shrink-0 bg-primary/10 text-primary hover:bg-primary/20"
-              >
-                Sauvegarder l'icône
-              </Button>
-            </div>
+          {/* Description Droite */}
+          <div className="flex-1 p-8 flex flex-col justify-center bg-muted/20">
+             <div className="max-w-xs mx-auto text-center flex flex-col gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                   <ImageIcon size={20} />
+                </div>
+                <h4 className="font-semibold">Bascule des Menus</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Les sections contenant du contenu sont activées par défaut. Vous pouvez les masquer manuellement. Les sections grisées n&apos;ont pas encore de contenu associé à ce projet.
+                </p>
+             </div>
           </div>
         </div>
-
       </section>
+
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Régénérer le lien du portail ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              En régénérant ce lien, l'ancien raccourci d'accès que vous avez déjà partagé avec vos clients cessera de fonctionner <b>immédiatement</b>. Ils devront utiliser le nouveau lien.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsAlertOpen(false)}>Annuler</AlertDialogCancel>
+            <Button variant="destructive" onClick={handleRegenerateToken} disabled={isPending}>
+              {isPending ? "Création en cours..." : "Oui, régénérer"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

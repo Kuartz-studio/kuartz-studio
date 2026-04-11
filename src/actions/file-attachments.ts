@@ -10,7 +10,8 @@ import { z } from "zod";
 const FORMATS = ["google_doc", "google_sheet", "figma", "notion", "drive", "github", "link", "other"] as const;
 
 const insertAttachmentSchema = z.object({
-  taskId: z.string(),
+  taskId: z.string().optional(),
+  projectId: z.string().optional(),
   title: z.string().min(1, "Le titre est requis"),
   url: z.string().url("L'URL n'est pas valide"),
   format: z.enum(FORMATS),
@@ -41,6 +42,7 @@ export async function createAttachmentAction(prevState: AttachmentActionState, f
 
     await db.insert(fileAttachments).values({
       taskId: parsed.data.taskId,
+      projectId: parsed.data.projectId,
       addedByUserId,
       title: parsed.data.title,
       url: parsed.data.url,
@@ -48,6 +50,7 @@ export async function createAttachmentAction(prevState: AttachmentActionState, f
     });
 
     revalidatePath("/tasks");
+    revalidatePath("/documents");
     return { data: { success: true } };
   } catch (error) {
     console.error("[createAttachmentAction]", error);
@@ -63,6 +66,7 @@ export async function deleteAttachmentAction(attachmentId: string): Promise<Atta
 
   await db.delete(fileAttachments).where(eq(fileAttachments.id, attachmentId));
   revalidatePath("/tasks");
+  revalidatePath("/documents");
   return { data: { success: true } };
 }
 

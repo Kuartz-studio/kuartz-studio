@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { projects, projectToUser, users } from "@/db/schema";
+import { projects, projectToUser, users, tasks, documents, fileAttachments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
 import { insertProjectSchema } from "@/lib/validators/projects";
@@ -77,6 +77,11 @@ export async function getProjectsWithUsers() {
     .from(projectToUser)
     .leftJoin(users, eq(projectToUser.userId, users.id));
 
+  // Fetch content counts for each project
+  const allTasks = await db.select({ id: tasks.id, projectId: tasks.projectId }).from(tasks);
+  const allDocs = await db.select({ id: documents.id, projectId: documents.projectId }).from(documents);
+  const allFiles = await db.select({ id: fileAttachments.id, projectId: fileAttachments.projectId }).from(fileAttachments);
+
   return allProjects.map(p => ({
     ...p,
     users: allLinks.filter(l => l.projectId === p.id).map(l => ({
@@ -85,6 +90,11 @@ export async function getProjectsWithUsers() {
       avatarBase64: l.userAvatar,
       role: l.role,
     })),
+    contentCounts: {
+      tasks: allTasks.filter(t => t.projectId === p.id).length,
+      documents: allDocs.filter(d => d.projectId === p.id).length,
+      files: allFiles.filter(f => f.projectId === p.id).length,
+    },
   }));
 }
 
@@ -100,7 +110,7 @@ export async function updateProjectLogoAction(projectId: string, base64: string)
   revalidatePath("/tasks");
 }
 
-export async function updatePortalSettingsAction(projectId: string, settings: { modules: { tasks: boolean; integration: boolean; branding: boolean; } }) {
+export async function updatePortalSettingsAction(projectId: string, settings: any) {
   const session = await verifySession();
   if (!session || (session.role !== "admin" && session.role !== "employee")) return;
 

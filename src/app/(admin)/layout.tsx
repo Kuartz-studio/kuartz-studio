@@ -1,6 +1,6 @@
 import { verifySession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
-import { LogOut, FolderKanban, CheckSquare, Users, FileText, Activity } from "lucide-react";
+import { LogOut, FolderKanban, CheckSquare, Users, FileText, Activity, Book } from "lucide-react";
 import { logoutAction } from "@/actions/auth";
 import { getMyNotifications, getUnreadCount } from "@/actions/notifications";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -47,7 +47,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               { path: "/users", label: "Utilisateurs", icon: <Users size={18} /> },
             ],
             [
-              { path: "/documents", label: "Documents", icon: <FileText size={18} /> },
+              { path: "/documentation", label: "Documentation", icon: <Book size={18} /> },
+              { path: "/documents", label: "Fichiers & Liens", icon: <FileText size={18} /> },
               { path: "/activity", label: "Activité", icon: <Activity size={18} /> },
             ],
           ]}

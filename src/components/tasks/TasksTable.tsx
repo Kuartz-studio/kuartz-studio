@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { StatusIcon, PriorityIcon, AvatarCustom } from "@/components/ui/table-icons";
 import { updateTaskAction, updateTaskAssigneesAction, updateTaskStatusAction } from "@/actions/tasks";
 import { createTagAction, deleteTagAction, updateTagColorAction, updateTaskTagsAction } from "@/actions/tags";
+import { ProjectTag } from "@/components/projects/ProjectTag";
 
 // Types
 export interface DbTag { id: string; name: string; color: string | null; projectId: string; }
@@ -458,14 +459,7 @@ export function TasksTable({
 
                 {/* Projet */}
                 <td className="px-4 py-2.5">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md bg-[var(--color-muted)] text-[var(--color-muted-foreground)] border border-[var(--color-border)] font-medium max-w-[160px]">
-                    {task.projectLogoBase64 ? (
-                      <img src={task.projectLogoBase64} alt="" className="h-4 w-4 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <FolderKanban size={12} className="opacity-50 shrink-0" />
-                    )}
-                    <span className="truncate">{task.projectName}</span>
-                  </span>
+                  <ProjectTag name={task.projectName} logoBase64={task.projectLogoBase64} />
                 </td>
 
                 {/* Titre */}

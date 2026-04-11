@@ -34,13 +34,14 @@ type Props = {
   tasks: any[];
   adminId?: string | null;
   documents: any[];
+  files?: any[];
   allTags: any[];
   allUsers: any[];
   allProjects: any[];
   projectUserMap: Record<string, string[]>;
 };
 
-export function ClientPortalRoot({ project, customers, isAdmin, progressStats, tasks, adminId, documents, allTags, allUsers, allProjects, projectUserMap }: Props) {
+export function ClientPortalRoot({ project, customers, isAdmin, progressStats, tasks, adminId, documents, files, allTags, allUsers, allProjects, projectUserMap }: Props) {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -61,6 +62,7 @@ export function ClientPortalRoot({ project, customers, isAdmin, progressStats, t
         isAdmin={isAdmin}
         tasks={tasks}
         documents={documents}
+        files={files}
         allTags={allTags}
         allUsers={allUsers}
         allProjects={allProjects}
