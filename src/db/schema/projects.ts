@@ -11,7 +11,15 @@ export const projects = sqliteTable("project", {
   description: text("description"),
   url: text("url"),
   logoBase64: text("logo_base64"),
+  iconSvg: text("icon_svg"),
   clientPortalToken: text("client_portal_token").unique().$defaultFn(() => crypto.randomUUID().replace(/-/g, "").slice(0, 12)),
+  portalSettings: text("portal_settings", { mode: "json" }).$type<{ // $type correctly types the JSON object
+    modules: {
+      tasks: boolean;
+      integration: boolean;
+      branding: boolean;
+    };
+  }>(),
   priority: integer("priority").default(0),
   targetDate: integer("target_date", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),

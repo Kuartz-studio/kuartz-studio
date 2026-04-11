@@ -16,6 +16,7 @@ interface UserRecord { id: string; name: string; avatarBase64: string | null; ro
 interface ProjectRow {
   id: string; name: string; slug: string; description: string | null;
   url: string | null; logoBase64: string | null; priority: number | null;
+  clientPortalToken: string | null;
   users: ProjectUser[];
 }
 
@@ -244,6 +245,7 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
             <th className="px-4 py-3 text-center w-20 border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Priorité</span>
             </th>
+            <th className="px-1 py-3 text-center w-12 border-b border-[var(--color-border)]"></th>
           </tr>
         </thead>
         <tbody>
@@ -295,6 +297,15 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
                     onSave={(v) => startTransition(() => { updateProjectAction(project.id, { priority: v }) })}
                   />
                 </div>
+              </td>
+
+              {/* Actions */}
+              <td className="px-1 py-2 text-center">
+                <Link href={`/client/${project.slug}-${project.clientPortalToken}`} target="_blank">
+                  <button className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors p-1" title="Ouvrir Vue Client">
+                    <ExternalLink size={14} />
+                  </button>
+                </Link>
               </td>
             </tr>
           ))}

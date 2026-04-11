@@ -5,12 +5,13 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, Trash2, FileText, ChevronRight } from "lucide-react";
+import { ArrowLeft, Trash2, FileText, ChevronRight, ExternalLink } from "lucide-react";
 import { deleteProjectAction } from "@/actions/projects";
 import { TasksTable } from "@/components/tasks/TasksTable";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { NewDocumentDialog } from "@/components/documents/NewDocumentDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PortalSettingsForm } from "@/components/client-portal/PortalSettingsForm";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -77,6 +78,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <p className="text-muted-foreground mt-1 font-mono text-sm">{project.slug}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href={`/client/${project.slug}-${project.clientPortalToken}`} target="_blank">
+            <Button variant="outline" size="sm" className="gap-2 text-primary border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors">
+              <ExternalLink size={14} />
+              Vue Client
+            </Button>
+          </Link>
           <form action={safeDeleteAction}>
             <Button variant="destructive" size="sm" className="gap-2">
               <Trash2 size={16} />
@@ -125,6 +132,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <TabsList className="mb-4">
           <TabsTrigger value="tasks">Tâches</TabsTrigger>
           <TabsTrigger value="docs">Documentation</TabsTrigger>
+          <TabsTrigger value="portal">Portail Client</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tasks" className="flex flex-col gap-4 focus-visible:outline-none">
@@ -171,6 +179,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               ))
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="portal" className="focus-visible:outline-none mt-6">
+          <PortalSettingsForm project={project} />
         </TabsContent>
       </Tabs>
     </div>

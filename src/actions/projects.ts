@@ -100,3 +100,33 @@ export async function updateProjectLogoAction(projectId: string, base64: string)
   revalidatePath("/tasks");
 }
 
+export async function updatePortalSettingsAction(projectId: string, settings: { modules: { tasks: boolean; integration: boolean; branding: boolean; } }) {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) return;
+
+  await db.update(projects).set({ portalSettings: settings }).where(eq(projects.id, projectId));
+  revalidatePath(`/projects`);
+}
+
+export async function updatePortalSvgAction(projectId: string, svg: string) {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) return;
+
+  // Simple sanitize check (must start with <svg)
+  if (svg && !svg.trim().toLowerCase().startsWith("<svg")) {
+     return { error: "Code SVG invalide" };
+  }
+
+  await db.update(projects).set({ iconSvg: svg || null }).where(eq(projects.id, projectId));
+  revalidatePath(`/projects`);
+  return { success: true };
+}
+
+export async function regeneratePortalTokenAction(projectId: string) {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) return;
+
+  const newToken = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  await db.update(projects).set({ clientPortalToken: newToken }).where(eq(projects.id, projectId));
+  revalidatePath(`/projects`);
+}
