@@ -14,12 +14,14 @@ import { Plus, Check, ChevronsUpDown, FolderKanban } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Project = { id: string; name: string; slug: string; logoBase64?: string | null };
+type UserMin = { id: string; name: string; email: string; avatarBase64: string | null; role: string };
 
-export function NewTaskDialog({ projectId, projects }: { projectId?: string; projects?: Project[] }) {
+export function NewTaskDialog({ projectId, projects, users }: { projectId?: string; projects?: Project[]; users?: UserMin[] }) {
   const [state, action, isPending] = useActionState(createTaskAction, {});
   const [open, setOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId ?? "");
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
 
   const selectedProject = projects?.find(p => p.id === selectedProjectId);
 
@@ -123,7 +125,7 @@ export function NewTaskDialog({ projectId, projects }: { projectId?: string; pro
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="status">Statut</Label>
-              <Select defaultValue="todo" name="status">
+              <Select defaultValue="TODO" name="status">
                 <SelectTrigger>
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
@@ -140,7 +142,7 @@ export function NewTaskDialog({ projectId, projects }: { projectId?: string; pro
             
             <div className="grid gap-2">
               <Label htmlFor="priority">Priorité</Label>
-              <Select defaultValue="medium" name="priority">
+              <Select defaultValue="2" name="priority">
                 <SelectTrigger>
                   <SelectValue placeholder="Priorité" />
                 </SelectTrigger>
@@ -154,6 +156,33 @@ export function NewTaskDialog({ projectId, projects }: { projectId?: string; pro
               </Select>
             </div>
           </div>
+
+          {users && users.length > 0 && (
+            <div className="grid gap-2">
+              <Label>Assigné(s)</Label>
+              <div className="flex flex-wrap gap-2">
+                {users.map(u => {
+                  const isSelected = selectedAssignees.includes(u.id);
+                  return (
+                    <button 
+                      key={u.id} 
+                      type="button" 
+                      onClick={() => setSelectedAssignees(prev => isSelected ? prev.filter(id => id !== u.id) : [...prev, u.id])}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-colors", 
+                        isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"
+                      )}
+                    >
+                      <span className="font-medium text-xs">{u.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedAssignees.map(id => (
+                <input key={id} type="hidden" name="assignees" value={id} />
+              ))}
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" type="button" onClick={() => setOpen(false)} disabled={isPending}>Annuler</Button>

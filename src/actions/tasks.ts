@@ -29,6 +29,8 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
   const data = Object.fromEntries(formData);
   const parsed = insertTaskSchema.safeParse(data);
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
+  
+  const assignees = formData.getAll("assignees") as string[];
 
   try {
     const [project] = await db.select().from(projects).where(eq(projects.id, parsed.data.projectId)).limit(1);
@@ -52,6 +54,12 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
       priority: parsed.data.priority ?? 0,
       createdByUserId,
     }).returning();
+
+    if (newTask && assignees.length > 0) {
+      await db.insert(taskAssignees).values(
+        assignees.map((userId) => ({ taskId: newTask.id, userId }))
+      );
+    }
 
     revalidatePath(`/projects/${project.slug}`);
     revalidatePath("/tasks");
