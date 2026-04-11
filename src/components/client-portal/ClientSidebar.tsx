@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown, ChevronRight, FileText, CheckSquare, Settings, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 type NavItem = {
   id: string;
@@ -42,7 +43,8 @@ export function ClientSidebar({ projectName, iconSvg, items }: Props) {
             <span className="font-bold text-lg tracking-tight bg-sidebar-foreground text-background w-full h-full rounded-md flex items-center justify-center">{projectName.charAt(0).toUpperCase()}</span>
           )}
         </div>
-        <span className="font-bold tracking-tight truncate">{projectName}</span>
+        <span className="font-bold tracking-tight truncate flex-1">{projectName}</span>
+        <ThemeToggle />
       </div>
 
       {/* Navigation */}

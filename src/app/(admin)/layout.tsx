@@ -5,6 +5,7 @@ import { logoutAction } from "@/actions/auth";
 import { getMyNotifications, getUnreadCount } from "@/actions/notifications";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { SidebarNav } from "@/components/layout/SidebarNav";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -33,7 +34,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <aside className="w-64 bg-card/50 border-r flex flex-col p-4 gap-6 shrink-0">
         <div className="flex items-center justify-between">
           <div className="font-bold text-xl px-2 tracking-tight">Kuartz Studio</div>
-          <NotificationBell notifications={myNotifs} unreadCount={unreadCount} />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <NotificationBell notifications={myNotifs} unreadCount={unreadCount} />
+          </div>
         </div>
         <SidebarNav
           groups={[
