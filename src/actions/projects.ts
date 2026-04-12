@@ -42,6 +42,107 @@ export async function createProjectAction(prevState: ActionState, formData: Form
   redirect(`/projects`);
 }
 
+// Preset task type
+type PresetTask = {
+  title: string;
+  tag: string;
+  assigneeIds: string[];
+  status: string;
+};
+
+export async function createProjectWithPresetAction(
+  prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) {
+    return { error: "Non autorisé à créer un projet" };
+  }
+
+  const data = Object.fromEntries(formData);
+  const parsed = insertProjectSchema.safeParse(data);
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
+
+  const { name, slug, description } = parsed.data;
+  const presetTasksJson = formData.get("presetTasks") as string | null;
+
+  try {
+    const existing = await db.select().from(projects).where(eq(projects.slug, slug)).limit(1);
+    if (existing.length > 0) return { error: "Ce slug (URL) est déjà utilisé par un autre projet." };
+
+    const [project] = await db.insert(projects).values({ name, slug, description }).returning();
+    if (!project) return { error: "Erreur serveur lors de la création du projet" };
+
+    // Owner
+    await db.insert(projectToUser).values({ projectId: project.id, userId: session.userId, role: "owner" });
+
+    // Preset tasks
+    if (presetTasksJson) {
+      const { tasks: tasksTable, taskAssignees, tags, taskTags } = await import("@/db/schema");
+      const presetTasks: PresetTask[] = JSON.parse(presetTasksJson);
+
+      // Get or create tags
+      const existingTags = await db.select().from(tags);
+      const tagMap = new Map(existingTags.map(t => [t.name.toLowerCase(), t]));
+
+      const uniqueTagNames = [...new Set(presetTasks.map(t => t.tag.toLowerCase()))];
+      const TAG_COLORS = ["#205CFF", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#06B6D4", "#84CC16"];
+
+      for (const tagName of uniqueTagNames) {
+        if (!tagMap.has(tagName)) {
+          const colorIndex = tagMap.size % TAG_COLORS.length;
+          const [newTag] = await db.insert(tags).values({
+            name: tagName.charAt(0).toUpperCase() + tagName.slice(1),
+            color: TAG_COLORS[colorIndex] || "#205CFF",
+          }).returning();
+          if (newTag) tagMap.set(tagName, newTag);
+        }
+      }
+
+      // Track project members to avoid duplicates
+      const projectMemberIds = new Set<string>([session.userId]);
+
+      // Create tasks
+      for (const preset of presetTasks) {
+        const statusMap: Record<string, string> = { "Todo": "TODO", "Backlog": "BACKLOG", "In Progress": "IN_PROGRESS", "Done": "DONE" };
+        const [newTask] = await db.insert(tasksTable).values({
+          projectId: project.id,
+          title: preset.title,
+          status: statusMap[preset.status] || "TODO",
+          priority: 0,
+          createdByUserId: session.userId,
+        }).returning();
+
+        if (!newTask) continue;
+
+        // Assignees (multiple)
+        for (const userId of preset.assigneeIds) {
+          await db.insert(taskAssignees).values({ taskId: newTask.id, userId });
+          // Add user to project if not already
+          if (!projectMemberIds.has(userId)) {
+            await db.insert(projectToUser).values({ projectId: project.id, userId, role: "member" });
+            projectMemberIds.add(userId);
+          }
+        }
+
+        // Tag
+        const tag = tagMap.get(preset.tag.toLowerCase());
+        if (tag) {
+          await db.insert(taskTags).values({ taskId: newTask.id, tagId: tag.id });
+        }
+      }
+    }
+
+    revalidatePath("/projects");
+    revalidatePath("/tasks");
+  } catch (error) {
+    console.error("[createProjectWithPresetAction]", error);
+    return { error: "Erreur serveur lors de la création du projet" };
+  }
+
+  redirect(`/projects`);
+}
+
 export async function deleteProjectAction(projectId: string) {
   const session = await verifySession();
   if (!session || session.role !== "admin") return;
