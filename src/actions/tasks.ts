@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { tasks, projects, taskAssignees } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -47,8 +47,12 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
       createdByUserId = fallbackAdmin.id;
     }
 
+    const [latestTask] = await db.select({ num: tasks.issueNumber }).from(tasks).orderBy(desc(tasks.issueNumber)).limit(1);
+    const nextIssueNumber = (latestTask?.num ?? 0) + 1;
+
     const [newTask] = await db.insert(tasks).values({
       projectId: parsed.data.projectId,
+      issueNumber: nextIssueNumber,
       title: parsed.data.title,
       description: parsed.data.description,
       status: parsed.data.status || "BACKLOG",
@@ -138,8 +142,12 @@ export async function duplicateTaskAction(taskId: string) {
   const [original] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
   if (!original) return { error: "Tâche introuvable" };
 
+  const [latestTask] = await db.select({ num: tasks.issueNumber }).from(tasks).orderBy(desc(tasks.issueNumber)).limit(1);
+  const nextIssueNumber = (latestTask?.num ?? 0) + 1;
+
   const [newTask] = await db.insert(tasks).values({
     projectId: original.projectId,
+    issueNumber: nextIssueNumber,
     title: `${original.title} (copie)`,
     description: original.description,
     status: "BACKLOG",

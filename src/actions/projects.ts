@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { projects, projectToUser, users, tasks, documents, fileAttachments } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
 import { insertProjectSchema } from "@/lib/validators/projects";
 import { base64ImageSchema } from "@/lib/validators/image";
@@ -128,11 +128,18 @@ export async function createProjectWithPresetAction(
       // Track project members to avoid duplicates
       const projectMemberIds = new Set<string>([session.userId]);
 
+      // Get latest issueNumber globally vs project? the previous codebase seems to use a global issueNumber across all tasks
+      // because issueNumber is on the tasks table. Or maybe it's per project. Usually Jira-style is per project, but let's test global first.
+      // Actually, if we look at schema, it just says issue_number. Let's make it global.
+      const [latestTask] = await db.select({ num: tasksTable.issueNumber }).from(tasksTable).orderBy(desc(tasksTable.issueNumber)).limit(1);
+      let nextIssueNumber = (latestTask?.num ?? 0) + 1;
+
       // Create tasks
       for (const preset of presetTasks) {
         const statusMap: Record<string, string> = { "Todo": "TODO", "Backlog": "BACKLOG", "In Progress": "IN_PROGRESS", "Done": "DONE" };
         const [newTask] = await db.insert(tasksTable).values({
           projectId: project.id,
+          issueNumber: nextIssueNumber++,
           title: preset.title,
           status: statusMap[preset.status] || "TODO",
           priority: 0,

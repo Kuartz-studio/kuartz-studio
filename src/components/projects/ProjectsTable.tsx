@@ -261,6 +261,7 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
 
   // Filter out admins from the users dropdown (admins have implicit access)
   const nonAdminUsers = useMemo(() => allUsers.filter(u => u.role !== "admin"), [allUsers]);
+  const adminUserIds = useMemo(() => new Set(allUsers.filter(u => u.role === "admin").map(u => u.id)), [allUsers]);
 
   // --- Optimistic update helpers ---
   const optimisticUpdate = (projectId: string, patch: Partial<ProjectRow>) => {
@@ -417,7 +418,7 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
               {/* Users (multi-select) — admins excluded */}
               <td className="px-4 py-2">
                 <UsersCell
-                  projectUsers={project.users.filter(u => u.role !== "admin")}
+                  projectUsers={project.users.filter(u => !adminUserIds.has(u.id))}
                   allUsers={nonAdminUsers}
                   onSave={(userIds) => handleUpdateUsers(project.id, userIds)}
                 />
