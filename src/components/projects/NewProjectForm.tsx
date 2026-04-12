@@ -1,17 +1,16 @@
 "use client";
 
-import { useActionState, useState, useMemo } from "react";
+import { useActionState, useState, useMemo, useRef } from "react";
 import { createProjectWithPresetAction } from "@/actions/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { compressImage } from "@/lib/image";
 import Link from "next/link";
-import { ArrowLeft, ListChecks, Check } from "lucide-react";
+import { ArrowLeft, ListChecks, Check, ImagePlus, Loader2 } from "lucide-react";
 import { AvatarCustom } from "@/components/ui/table-icons";
 
 type User = { id: string; name: string; role: string; avatarBase64: string | null };
@@ -49,7 +48,7 @@ const TAG_COLORS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// PresetAssigneeCell — mirrors the TasksTable AssigneeCell pattern
+// PresetAssigneeCell
 // ---------------------------------------------------------------------------
 function PresetAssigneeCell({
   assigneeIds,
@@ -137,15 +136,36 @@ export function NewProjectForm({ users }: { users: User[] }) {
   const [presetEnabled, setPresetEnabled] = useState(true);
   const [selectedTasks, setSelectedTasks] = useState<boolean[]>(PRESET_TASKS.map(() => true));
 
-  // Map preset assignee names to user IDs
+  // Logo upload state
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoLoading, setLogoLoading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Project members (admins are always included implicitly)
+  const [projectMembers, setProjectMembers] = useState<string[]>([]);
+  const [memberPopoverOpen, setMemberPopoverOpen] = useState(false);
+
+  // Visible users for preset tasks = admins + project members
+  const visibleUsersForPreset = useMemo(() => {
+    return users.filter(u => u.role === "admin" || projectMembers.includes(u.id));
+  }, [users, projectMembers]);
+
+  // Resolve preset assignee names to user IDs (only if user is visible)
   const resolveUserId = (name: string): string[] => {
-    const user = users.find(u => u.name.toLowerCase() === name.toLowerCase());
+    const user = visibleUsersForPreset.find(u => u.name.toLowerCase() === name.toLowerCase());
     return user ? [user.id] : [];
   };
 
   const [taskAssigneeIds, setTaskAssigneeIds] = useState<string[][]>(
     PRESET_TASKS.map(t => resolveUserId(t.assignee))
   );
+
+  // When project members change, re-resolve assignees and clean up invalid ones
+  const handleMembersChange = (newMembers: string[]) => {
+    setProjectMembers(newMembers);
+    const validIds = new Set([...newMembers, ...users.filter(u => u.role === "admin").map(u => u.id)]);
+    setTaskAssigneeIds(prev => prev.map(ids => ids.filter(id => validIds.has(id))));
+  };
 
   const toggleTask = (index: number) => {
     setSelectedTasks(prev => prev.map((v, i) => i === index ? !v : v));
@@ -162,22 +182,38 @@ export function NewProjectForm({ users }: { users: User[] }) {
 
   const selectedCount = selectedTasks.filter(Boolean).length;
 
-  // Build the JSON to send with form
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    setLogoLoading(true);
+    try {
+      const base64 = await compressImage(file);
+      setLogoPreview(base64);
+    } catch {
+      // ignored
+    } finally {
+      setLogoLoading(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
+
+  // Build JSON payload
   const presetTasksPayload = useMemo(() => {
     if (!presetEnabled) return "";
     const selected = PRESET_TASKS
       .map((t, i) => ({ ...t, assigneeIds: taskAssigneeIds[i] || [], included: selectedTasks[i] }))
       .filter(t => t.included);
-
-    return JSON.stringify(
-      selected.map(t => ({
-        title: t.title,
-        tag: t.tag,
-        assigneeIds: t.assigneeIds,
-        status: t.status,
-      }))
-    );
+    return JSON.stringify(selected.map(t => ({
+      title: t.title,
+      tag: t.tag,
+      assigneeIds: t.assigneeIds,
+      status: t.status,
+    })));
   }, [presetEnabled, selectedTasks, taskAssigneeIds]);
+
+  // Non-admin users for member selection
+  const nonAdminUsers = users.filter(u => u.role !== "admin");
+  const selectedMemberUsers = users.filter(u => projectMembers.includes(u.id));
 
   return (
     <>
@@ -194,143 +230,238 @@ export function NewProjectForm({ users }: { users: User[] }) {
       </div>
 
       <form action={action}>
-        {/* Hidden field for preset tasks JSON */}
+        {/* Hidden fields */}
         {presetEnabled && <input type="hidden" name="presetTasks" value={presetTasksPayload} />}
+        {logoPreview && <input type="hidden" name="logoBase64" value={logoPreview} />}
+        {projectMembers.map(id => (
+          <input key={id} type="hidden" name="memberIds" value={id} />
+        ))}
 
         <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Détails du projet</CardTitle>
-              <CardDescription>Remplissez les informations basiques pour initialiser le projet.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-6">
-                {state?.error && (
-                  <div className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md">
-                    {state.error}
-                  </div>
+          {/* ============================================================ */}
+          {/* Project Details Card — Elegant style */}
+          {/* ============================================================ */}
+          <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+            <div className="p-6 flex flex-col gap-5">
+              {state?.error && (
+                <div className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md">
+                  {state.error}
+                </div>
+              )}
+
+              {/* Row 1: Logo + Slug */}
+              <div className="flex items-center gap-4">
+                {/* Logo upload */}
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={logoLoading}
+                  className="h-10 w-10 rounded-lg overflow-hidden border border-[var(--color-border)] hover:border-[var(--color-foreground)]/40 transition-colors flex items-center justify-center bg-[var(--color-muted)] cursor-pointer relative group shrink-0"
+                >
+                  {logoLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-[var(--color-muted-foreground)]" />
+                  ) : logoPreview ? (
+                    <>
+                      <img src={logoPreview} alt="Logo" className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <ImagePlus className="h-3.5 w-3.5 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <ImagePlus className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+                  )}
+                </button>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                  className="hidden"
+                />
+
+                <Input
+                  id="slug" name="slug" required
+                  placeholder="ex: refonte-ecommerce"
+                  className="font-mono text-sm h-10 flex-1"
+                />
+              </div>
+              {state?.fieldErrors?.slug && (
+                <span className="text-xs text-destructive -mt-3">{state.fieldErrors.slug[0]}</span>
+              )}
+
+              {/* Row 2: Title + Description stacked */}
+              <div className="flex flex-col w-full relative">
+                <Input
+                  id="name" name="name" required
+                  placeholder="Nom du projet"
+                  className="relative z-10 border-input rounded-t-lg rounded-b-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary px-4 py-3 h-12 text-sm font-medium focus-visible:z-20"
+                />
+                {state?.fieldErrors?.name && (
+                  <span className="text-xs text-destructive px-4 py-1 relative z-20 bg-background">{state.fieldErrors.name[0]}</span>
                 )}
+                <Textarea
+                  id="description" name="description" rows={3}
+                  placeholder="Description (optionnelle)"
+                  className="relative z-10 -mt-[1px] border-input rounded-t-none rounded-b-lg shadow-sm focus-visible:ring-1 focus-visible:ring-primary min-h-[80px] px-4 py-3 resize-y bg-transparent focus-visible:z-20 border-t-transparent focus-visible:border-t-input"
+                />
+              </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Nom du projet</Label>
-                  <Input id="name" name="name" placeholder="Ex: Refonte Site E-commerce" required />
-                  {state?.fieldErrors?.name && (
-                    <span className="text-xs text-destructive">{state.fieldErrors.name[0]}</span>
-                  )}
+              {/* Row 3: Project Members */}
+              <div className="flex items-center gap-2">
+                <Popover open={memberPopoverOpen} onOpenChange={setMemberPopoverOpen}>
+                  <PopoverTrigger
+                    className="flex h-10 w-auto min-w-[40px] items-center justify-start rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors overflow-hidden hover:bg-muted shadow-sm"
+                  >
+                    {selectedMemberUsers.length > 0 ? (
+                      <div className="flex items-center max-w-full">
+                        <div className="flex -space-x-1 shrink-0">
+                          {selectedMemberUsers.slice(0, 4).map(u => (
+                            <AvatarCustom key={u.id} name={u.name} avatarBase64={u.avatarBase64} />
+                          ))}
+                          {selectedMemberUsers.length > 4 && (
+                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[var(--color-muted)] text-[9px] font-bold border shrink-0 z-10">
+                              +{selectedMemberUsers.length - 4}
+                            </span>
+                          )}
+                        </div>
+                        {selectedMemberUsers.length <= 2 && (
+                          <span className="truncate flex-1 ml-2 text-foreground font-medium text-xs">
+                            {selectedMemberUsers.map(u => u.name).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground whitespace-nowrap px-1">Membres du projet...</span>
+                    )}
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[240px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Ajouter un membre..." />
+                      <CommandList>
+                        <CommandEmpty>Aucun utilisateur.</CommandEmpty>
+                        <CommandGroup>
+                          {nonAdminUsers.map(u => {
+                            const isSelected = projectMembers.includes(u.id);
+                            return (
+                              <CommandItem key={u.id} onSelect={() => {
+                                const newMembers = isSelected
+                                  ? projectMembers.filter(id => id !== u.id)
+                                  : [...projectMembers, u.id];
+                                handleMembersChange(newMembers);
+                              }}>
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <AvatarCustom name={u.name} avatarBase64={u.avatarBase64} />
+                                  <p className="text-sm font-medium truncate">{u.name}</p>
+                                </div>
+                                {isSelected && <Check className="ml-auto h-4 w-4 shrink-0 text-primary" />}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </div>
+
+          {/* ============================================================ */}
+          {/* Preset Tasks */}
+          {/* ============================================================ */}
+          <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+            <div className="p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <ListChecks size={18} className="text-primary" />
                 </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="slug">Slug (URL)</Label>
-                  <Input id="slug" name="slug" placeholder="ex: refonte-ecommerce" className="font-mono text-sm" required />
-                  <p className="text-xs text-muted-foreground">Ce slug sera utilisé dans l&apos;URL. Lettres minuscules, chiffres et tirets uniquement.</p>
-                  {state?.fieldErrors?.slug && (
-                    <span className="text-xs text-destructive">{state.fieldErrors.slug[0]}</span>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Description (optionnelle)</Label>
-                  <Textarea id="description" name="description" placeholder="Courte description des objectifs..." rows={3} />
+                <div>
+                  <h3 className="font-semibold text-sm">Preset de tâches</h3>
+                  <p className="text-xs text-muted-foreground">Générer automatiquement un listing de tâches standard.</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Preset Tasks Card */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <ListChecks size={18} className="text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle>Preset de tâches</CardTitle>
-                    <CardDescription>Générer automatiquement un listing de tâches standard.</CardDescription>
-                  </div>
-                </div>
-                <Switch checked={presetEnabled} onCheckedChange={setPresetEnabled} />
-              </div>
-            </CardHeader>
+              <Switch checked={presetEnabled} onCheckedChange={setPresetEnabled} />
+            </div>
 
             {presetEnabled && (
-              <CardContent>
-                <div className="rounded-lg border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-[var(--color-muted)]">
-                        <th className="px-3 py-2.5 text-left w-10 border-b border-[var(--color-border)]">
+              <div className="border-t border-[var(--color-border)]">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[var(--color-muted)]">
+                      <th className="px-3 py-2.5 text-left w-10 border-b border-[var(--color-border)]">
+                        <input
+                          type="checkbox"
+                          checked={selectedTasks.every(Boolean)}
+                          onChange={toggleAll}
+                          className="rounded border-[var(--color-border)] accent-[var(--color-primary)] cursor-pointer"
+                        />
+                      </th>
+                      <th className="px-3 py-2.5 text-left border-b border-[var(--color-border)] text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">
+                        Tâche
+                      </th>
+                      <th className="px-3 py-2.5 text-left border-b border-[var(--color-border)] text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide w-28">
+                        Tag
+                      </th>
+                      <th className="px-3 py-2.5 text-left border-b border-[var(--color-border)] text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide w-40">
+                        Assignation
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PRESET_TASKS.map((task, index) => (
+                      <tr
+                        key={index}
+                        className={`border-b last:border-0 border-[var(--color-border)] transition-colors ${
+                          selectedTasks[index] ? "hover:bg-[var(--color-muted)]/50" : "opacity-40"
+                        }`}
+                      >
+                        <td className="px-3 py-2">
                           <input
                             type="checkbox"
-                            checked={selectedTasks.every(Boolean)}
-                            onChange={toggleAll}
+                            checked={selectedTasks[index]}
+                            onChange={() => toggleTask(index)}
                             className="rounded border-[var(--color-border)] accent-[var(--color-primary)] cursor-pointer"
                           />
-                        </th>
-                        <th className="px-3 py-2.5 text-left border-b border-[var(--color-border)] text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">
-                          Tâche
-                        </th>
-                        <th className="px-3 py-2.5 text-left border-b border-[var(--color-border)] text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide w-28">
-                          Tag
-                        </th>
-                        <th className="px-3 py-2.5 text-left border-b border-[var(--color-border)] text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide w-40">
-                          Assignation
-                        </th>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="text-[13px] font-medium">{task.title}</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor: `${TAG_COLORS[task.tag] || "#888"}20`,
+                              color: TAG_COLORS[task.tag] || "#888",
+                            }}
+                          >
+                            {task.tag}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <PresetAssigneeCell
+                            assigneeIds={taskAssigneeIds[index] || []}
+                            allUsers={visibleUsersForPreset}
+                            onSave={(ids) => updateAssignees(index, ids)}
+                            disabled={!selectedTasks[index]}
+                          />
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {PRESET_TASKS.map((task, index) => (
-                        <tr
-                          key={index}
-                          className={`border-b last:border-0 border-[var(--color-border)] transition-colors ${
-                            selectedTasks[index] ? "hover:bg-[var(--color-muted)]/50" : "opacity-40"
-                          }`}
-                        >
-                          <td className="px-3 py-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedTasks[index]}
-                              onChange={() => toggleTask(index)}
-                              className="rounded border-[var(--color-border)] accent-[var(--color-primary)] cursor-pointer"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="text-[13px] font-medium">{task.title}</span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <span
-                              className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                              style={{
-                                backgroundColor: `${TAG_COLORS[task.tag] || "#888"}20`,
-                                color: TAG_COLORS[task.tag] || "#888",
-                              }}
-                            >
-                              {task.tag}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <PresetAssigneeCell
-                              assigneeIds={taskAssigneeIds[index] || []}
-                              allUsers={users}
-                              onSave={(ids) => updateAssignees(index, ids)}
-                              disabled={!selectedTasks[index]}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] px-3 py-2">
-                    <span className="text-[11px] text-[var(--color-muted-foreground)]">
-                      {selectedCount} / {PRESET_TASKS.length} tâches sélectionnées
-                    </span>
-                  </div>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] px-3 py-2">
+                  <span className="text-[11px] text-[var(--color-muted-foreground)]">
+                    {selectedCount} / {PRESET_TASKS.length} tâches sélectionnées
+                  </span>
                 </div>
-              </CardContent>
+              </div>
             )}
-          </Card>
+          </div>
 
-          <div className="flex justify-end gap-4">
+          {/* ============================================================ */}
+          {/* Actions */}
+          {/* ============================================================ */}
+          <div className="flex justify-end gap-3">
             <Link href="/projects">
               <Button variant="outline" type="button" disabled={isPending}>Annuler</Button>
             </Link>

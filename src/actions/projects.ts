@@ -65,16 +65,30 @@ export async function createProjectWithPresetAction(
 
   const { name, slug, description } = parsed.data;
   const presetTasksJson = formData.get("presetTasks") as string | null;
+  const logoBase64 = formData.get("logoBase64") as string | null;
+  const memberIds = formData.getAll("memberIds") as string[];
 
   try {
     const existing = await db.select().from(projects).where(eq(projects.slug, slug)).limit(1);
     if (existing.length > 0) return { error: "Ce slug (URL) est déjà utilisé par un autre projet." };
 
-    const [project] = await db.insert(projects).values({ name, slug, description }).returning();
+    const [project] = await db.insert(projects).values({
+      name, slug, description,
+      logoBase64: logoBase64 || null,
+    }).returning();
     if (!project) return { error: "Erreur serveur lors de la création du projet" };
 
     // Owner
     await db.insert(projectToUser).values({ projectId: project.id, userId: session.userId, role: "owner" });
+
+    // Project members
+    if (memberIds.length > 0) {
+      for (const memberId of memberIds) {
+        if (memberId !== session.userId) {
+          await db.insert(projectToUser).values({ projectId: project.id, userId: memberId, role: "member" });
+        }
+      }
+    }
 
     // Preset tasks
     if (presetTasksJson) {
