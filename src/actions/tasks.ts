@@ -112,3 +112,54 @@ export async function updateTaskAction(taskId: string, payload: { title?: string
   revalidatePath(`/projects/[slug]`, 'page');
   return { success: true };
 }
+
+export async function deleteTaskAction(taskId: string) {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) {
+    return { error: "Non autorisé" };
+  }
+
+  const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+  if (!task) return { error: "Tâche introuvable" };
+
+  await db.delete(tasks).where(eq(tasks.id, taskId));
+  await logActivity({ type: "task_deleted", entityType: "task", entityId: taskId, entityTitle: task.title });
+  revalidatePath(`/tasks`);
+  revalidatePath(`/projects/[slug]`, 'page');
+  return { success: true };
+}
+
+export async function duplicateTaskAction(taskId: string) {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) {
+    return { error: "Non autorisé" };
+  }
+
+  const [original] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+  if (!original) return { error: "Tâche introuvable" };
+
+  const [newTask] = await db.insert(tasks).values({
+    projectId: original.projectId,
+    title: `${original.title} (copie)`,
+    description: original.description,
+    status: "BACKLOG",
+    priority: original.priority,
+    targetDate: original.targetDate,
+    createdByUserId: session.userId,
+  }).returning();
+
+  // Copy assignees
+  if (newTask) {
+    const originalAssignees = await db.select().from(taskAssignees).where(eq(taskAssignees.taskId, taskId));
+    if (originalAssignees.length > 0) {
+      await db.insert(taskAssignees).values(
+        originalAssignees.map(a => ({ taskId: newTask.id, userId: a.userId }))
+      );
+    }
+  }
+
+  revalidatePath(`/tasks`);
+  revalidatePath(`/projects/[slug]`, 'page');
+  return { success: true };
+}
+

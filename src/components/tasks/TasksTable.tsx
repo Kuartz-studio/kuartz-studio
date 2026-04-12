@@ -3,14 +3,15 @@
 import { useState, useMemo, useTransition } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Filter, Check, X, CalendarIcon, Plus, Trash2, FolderKanban } from "lucide-react";
+import { Check, X, CalendarIcon, Plus, Trash2, CopyPlus, PenLine } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { StatusIcon, PriorityIcon, AvatarCustom } from "@/components/ui/table-icons";
-import { updateTaskAction, updateTaskAssigneesAction, updateTaskStatusAction } from "@/actions/tasks";
+import { updateTaskAction, updateTaskAssigneesAction, updateTaskStatusAction, deleteTaskAction, duplicateTaskAction } from "@/actions/tasks";
 import { createTagAction, deleteTagAction, updateTagColorAction, updateTaskTagsAction } from "@/actions/tags";
 import { ProjectTag } from "@/components/projects/ProjectTag";
 
@@ -408,6 +409,7 @@ export function TasksTable({
   allUsers,
   allProjects,
   projectUserMap,
+  currentUserId,
 }: { 
   tasks: EnrichedTask[]; 
   allTags: DbTag[];
@@ -415,8 +417,21 @@ export function TasksTable({
   allProjects: ProjectRecord[];
   /** Map of projectId → userId[] for project membership filtering */
   projectUserMap: Record<string, string[]>;
+  /** Current logged-in user ID for row highlighting */
+  currentUserId?: string;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [detailTask, setDetailTask] = useState<EnrichedTask | null>(null);
+
+  const handleDelete = (task: EnrichedTask) => {
+    if (confirm(`Supprimer la tâche "${task.title}" ?`)) {
+      startTransition(() => { deleteTaskAction(task.id); });
+    }
+  };
+
+  const handleDuplicate = (task: EnrichedTask) => {
+    startTransition(() => { duplicateTaskAction(task.id); });
+  };
 
   if (tasks.length === 0) {
     return (
@@ -430,92 +445,189 @@ export function TasksTable({
   }
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr>
-              <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%]">ID</th>
-              <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[15%]">Projet</th>
-              <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-auto">Titre</th>
-              <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%]">Tags</th>
-              <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%] whitespace-nowrap">Statut</th>
-              <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[120px]">Priorité</th>
-              <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[150px]">Échéance</th>
-              <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[160px]">Assigné</th>
-            </tr>
-          </thead>
-          <tbody className={cn("transition-opacity", isPending && "opacity-70")}>
-            {tasks.map((task) => (
-              <tr key={task.id} className="group border-b last:border-0 border-[var(--color-border)] hover:bg-[var(--color-muted)] transition-colors">
-                
-                {/* ID */}
-                <td className="px-4 py-2.5">
-                  <span className="text-[12px] font-mono text-[var(--color-muted-foreground)] select-none">
-                    #{task.issueNumber}
-                  </span>
-                </td>
-
-                {/* Projet */}
-                <td className="px-4 py-2.5">
-                  <ProjectTag name={task.projectName} logoBase64={task.projectLogoBase64} />
-                </td>
-
-                {/* Titre */}
-                <td className="px-4 py-2.5">
-                  <EditableTitle 
-                    value={task.title} 
-                    onSave={(v) => startTransition(() => { updateTaskAction(task.id, { title: v }) })} 
-                  />
-                </td>
-
-                {/* Tags */}
-                <td className="px-4 py-2.5">
-                  <TagsCell 
-                    tags={task.tags} 
-                    allTags={allTags} 
-                    onChange={(newTags) => startTransition(() => { updateTaskTagsAction(task.id, newTags.map(t => t.tag.id)) })}
-                    onCreateTag={async (name, color) => {
-                      const newTag = await createTagAction(name, color);
-                      return newTag ?? null;
-                    }}
-                    onDeleteTag={(tagId) => startTransition(() => { deleteTagAction(tagId) })}
-                    onUpdateTagColor={(tagId, color) => startTransition(() => { updateTagColorAction(tagId, color) })}
-                  />
-                </td>
-
-                {/* Statut */}
-                <td className="px-4 py-2.5">
-                  <StatusCell value={task.status} onSave={(v) => startTransition(() => { updateTaskStatusAction(task.id, v as "BACKLOG" | "TODO" | "IN_PROGRESS" | "PAUSED" | "DONE" | "CANCELED") })} />
-                </td>
-
-                {/* Priorité */}
-                <td className="px-4 py-2.5">
-                  <PriorityCell value={task.priority} onSave={(v) => startTransition(() => { updateTaskAction(task.id, { priority: v }) })} />
-                </td>
-
-                {/* Echéance */}
-                <td className="px-4 py-2.5">
-                  <DateCell 
-                    value={task.targetDate} 
-                    status={task.status} 
-                    onSave={(v) => startTransition(() => { updateTaskAction(task.id, { targetDate: v ? new Date(v) : null }) })} 
-                  />
-                </td>
-
-                {/* Assigné */}
-                <td className="px-4 py-2.5">
-                  <AssigneeCell 
-                    assignees={task.assignees} 
-                    allUsers={projectUserMap ? allUsers.filter(u => u.role === "admin" || (projectUserMap[task.projectId] ?? []).includes(u.id)) : allUsers} 
-                    onSave={(userIds) => startTransition(() => { updateTaskAssigneesAction(task.id, userIds) })} 
-                  />
-                </td>
+    <>
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%]">ID</th>
+                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[15%]">Projet</th>
+                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-auto">Titre</th>
+                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%]">Tags</th>
+                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[150px]">Échéance</th>
+                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[160px]">Assigné</th>
+                <th className="px-2 py-3 text-center bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-24">Actions</th>
+                <th className="px-2 py-3 text-center bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%] whitespace-nowrap">St.</th>
+                <th className="px-2 py-3 text-center bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%] whitespace-nowrap">Pr.</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className={cn("transition-opacity", isPending && "opacity-70")}>
+              {tasks.map((task) => {
+                const isMyTask = currentUserId ? task.assignees.some(a => a.user.id === currentUserId) : false;
+                return (
+                  <tr key={task.id} className={cn(
+                    "group border-b last:border-0 border-[var(--color-border)] hover:bg-[var(--color-muted)] transition-colors",
+                    isMyTask && "bg-[var(--primary)]/[0.04]"
+                  )}>
+                
+                    {/* ID */}
+                    <td className="px-4 py-2.5">
+                      <span className="text-[12px] font-mono text-[var(--color-muted-foreground)] select-none">
+                        #{task.issueNumber}
+                      </span>
+                    </td>
+
+                    {/* Projet */}
+                    <td className="px-4 py-2.5">
+                      <ProjectTag name={task.projectName} logoBase64={task.projectLogoBase64} />
+                    </td>
+
+                    {/* Titre */}
+                    <td className="px-4 py-2.5">
+                      <EditableTitle 
+                        value={task.title} 
+                        onSave={(v) => startTransition(() => { updateTaskAction(task.id, { title: v }) })} 
+                      />
+                    </td>
+
+                    {/* Tags */}
+                    <td className="px-4 py-2.5">
+                      <TagsCell 
+                        tags={task.tags} 
+                        allTags={allTags} 
+                        onChange={(newTags) => startTransition(() => { updateTaskTagsAction(task.id, newTags.map(t => t.tag.id)) })}
+                        onCreateTag={async (name, color) => {
+                          const newTag = await createTagAction(name, color);
+                          return newTag ?? null;
+                        }}
+                        onDeleteTag={(tagId) => startTransition(() => { deleteTagAction(tagId) })}
+                        onUpdateTagColor={(tagId, color) => startTransition(() => { updateTagColorAction(tagId, color) })}
+                      />
+                    </td>
+
+                    {/* Echéance */}
+                    <td className="px-4 py-2.5">
+                      <DateCell 
+                        value={task.targetDate} 
+                        status={task.status} 
+                        onSave={(v) => startTransition(() => { updateTaskAction(task.id, { targetDate: v ? new Date(v) : null }) })} 
+                      />
+                    </td>
+
+                    {/* Assigné */}
+                    <td className="px-4 py-2.5">
+                      <AssigneeCell 
+                        assignees={task.assignees} 
+                        allUsers={projectUserMap ? allUsers.filter(u => u.role === "admin" || (projectUserMap[task.projectId] ?? []).includes(u.id)) : allUsers} 
+                        onSave={(userIds) => startTransition(() => { updateTaskAssigneesAction(task.id, userIds) })} 
+                      />
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-2 py-2.5 text-center">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDuplicate(task); }}
+                          className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md"
+                          title="Dupliquer"
+                        >
+                          <CopyPlus size={15} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDetailTask(task); }}
+                          className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md"
+                          title="Détails"
+                        >
+                          <PenLine size={15} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(task); }}
+                          className="text-[var(--color-muted-foreground)] hover:text-red-500 hover:bg-red-500/10 transition-colors p-1.5 rounded-md"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* Statut (icon only, compact) */}
+                    <td className="px-2 py-2.5 text-center">
+                      <StatusCell value={task.status} onSave={(v) => startTransition(() => { updateTaskStatusAction(task.id, v as "BACKLOG" | "TODO" | "IN_PROGRESS" | "PAUSED" | "DONE" | "CANCELED") })} />
+                    </td>
+
+                    {/* Priorité (icon only, compact) */}
+                    <td className="px-2 py-2.5 text-center">
+                      <PriorityCell value={task.priority} onSave={(v) => startTransition(() => { updateTaskAction(task.id, { priority: v }) })} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {/* Task Detail Sidebar */}
+      <Sheet open={!!detailTask} onOpenChange={(val) => !val && setDetailTask(null)}>
+        <SheetContent className="w-[75%] sm:w-[75%] sm:max-w-[720px] !max-w-[720px] overflow-y-auto overflow-x-hidden px-8 py-8" side="right">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Détail de la tâche : {detailTask?.title}</SheetTitle>
+            <SheetDescription>Visualisez et modifiez les informations de la tâche.</SheetDescription>
+          </SheetHeader>
+
+          {detailTask && (
+            <div className="flex flex-col gap-6 pb-12">
+              <div>
+                <span className="text-xs font-mono text-[var(--color-muted-foreground)]">#{detailTask.issueNumber} · {detailTask.projectName}</span>
+                <h2 className="text-xl font-bold mt-1">{detailTask.title}</h2>
+                {detailTask.description && (
+                  <p className="text-sm text-[var(--color-muted-foreground)] mt-2 leading-relaxed whitespace-pre-wrap">{detailTask.description}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Statut</span>
+                  <StatusCell value={detailTask.status} onSave={(v) => startTransition(() => { updateTaskStatusAction(detailTask.id, v as "BACKLOG" | "TODO" | "IN_PROGRESS" | "PAUSED" | "DONE" | "CANCELED") })} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Priorité</span>
+                  <PriorityCell value={detailTask.priority} onSave={(v) => startTransition(() => { updateTaskAction(detailTask.id, { priority: v }) })} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Échéance</span>
+                  <DateCell value={detailTask.targetDate} status={detailTask.status} onSave={(v) => startTransition(() => { updateTaskAction(detailTask.id, { targetDate: v ? new Date(v) : null }) })} />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Assignés</span>
+                <AssigneeCell
+                  assignees={detailTask.assignees}
+                  allUsers={projectUserMap ? allUsers.filter(u => u.role === "admin" || (projectUserMap[detailTask.projectId] ?? []).includes(u.id)) : allUsers}
+                  onSave={(userIds) => startTransition(() => { updateTaskAssigneesAction(detailTask.id, userIds) })}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Tags</span>
+                <TagsCell
+                  tags={detailTask.tags}
+                  allTags={allTags}
+                  onChange={(newTags) => startTransition(() => { updateTaskTagsAction(detailTask.id, newTags.map(t => t.tag.id)) })}
+                  onCreateTag={async (name, color) => {
+                    const newTag = await createTagAction(name, color);
+                    return newTag ?? null;
+                  }}
+                  onDeleteTag={(tagId) => startTransition(() => { deleteTagAction(tagId) })}
+                  onUpdateTagColor={(tagId, color) => startTransition(() => { updateTagColorAction(tagId, color) })}
+                />
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

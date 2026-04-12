@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { PanelRight, Trash2, Check, ExternalLink, FolderKanban } from "lucide-react";
+import { PenLine, Trash2, Check, ExternalLink, FolderKanban } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -23,7 +23,7 @@ interface ProjectRow {
   iconSvg: string | null;
   portalSettings: any | null;
   users: ProjectUser[];
-  contentCounts: { tasks: number; documents: number; files: number };
+  contentCounts: { tasks: number; tasksDone: number; documents: number; files: number };
 }
 
 const PRIORITY_OPTIONS = [
@@ -259,6 +259,9 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
             <th className="px-4 py-3 text-center w-20 border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Priorité</span>
             </th>
+            <th className="px-4 py-3 text-center w-28 border-b border-[var(--color-border)]">
+              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Avancement</span>
+            </th>
             <th className="px-2 py-3 text-center w-24 border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Actions</span>
             </th>
@@ -315,6 +318,29 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
                 </div>
               </td>
 
+              {/* Avancement */}
+              <td className="px-4 py-2">
+                {(() => {
+                  const total = project.contentCounts.tasks;
+                  const done = project.contentCounts.tasksDone;
+                  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                  return (
+                    <div className="flex items-center gap-2" title={`${done}/${total} tâches terminées`}>
+                      <div className="flex-1 h-1.5 rounded-full bg-[var(--color-muted)]">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: pct === 100 ? '#10B981' : pct >= 50 ? '#3B82F6' : pct > 0 ? '#F59E0B' : 'transparent',
+                          }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-mono text-[var(--color-muted-foreground)] w-8 text-right">{pct}%</span>
+                    </div>
+                  );
+                })()}
+              </td>
+
               {/* Actions */}
               <td className="px-2 py-2 text-center">
                 <div className="flex items-center justify-center gap-0.5">
@@ -323,7 +349,7 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
                     className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md" 
                     title="Configuration du projet"
                   >
-                    <PanelRight size={15} />
+                    <PenLine size={15} />
                   </button>
                   <Link href={`/client/${project.slug}-${project.clientPortalToken}`} target="_blank">
                     <button className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md" title="Vue Client">

@@ -78,29 +78,33 @@ export async function getProjectsWithUsers() {
     .leftJoin(users, eq(projectToUser.userId, users.id));
 
   // Fetch content counts for each project
-  const allTasks = await db.select({ id: tasks.id, projectId: tasks.projectId }).from(tasks);
+  const allTasks = await db.select({ id: tasks.id, projectId: tasks.projectId, status: tasks.status }).from(tasks);
   const allDocs = await db.select({ id: documents.id, projectId: documents.projectId, category: documents.category }).from(documents);
   const allFiles = await db.select({ id: fileAttachments.id, projectId: fileAttachments.projectId }).from(fileAttachments);
 
-  return allProjects.map(p => ({
-    ...p,
-    users: allLinks.filter(l => l.projectId === p.id).map(l => ({
-      id: l.userId,
-      name: l.userName,
-      avatarBase64: l.userAvatar,
-      role: l.role,
-    })),
-    contentCounts: {
-      tasks: allTasks.filter(t => t.projectId === p.id).length,
-      documents: allDocs.filter(d => d.projectId === p.id).length,
-      files: allFiles.filter(f => f.projectId === p.id).length,
-      documentCategories: allDocs.filter(d => d.projectId === p.id).reduce((acc, doc) => {
-        const cat = doc.category || "Autre";
-        acc[cat] = (acc[cat] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-    },
-  }));
+  return allProjects.map(p => {
+    const projectTasks = allTasks.filter(t => t.projectId === p.id);
+    return {
+      ...p,
+      users: allLinks.filter(l => l.projectId === p.id).map(l => ({
+        id: l.userId,
+        name: l.userName,
+        avatarBase64: l.userAvatar,
+        role: l.role,
+      })),
+      contentCounts: {
+        tasks: projectTasks.length,
+        tasksDone: projectTasks.filter(t => t.status === "DONE").length,
+        documents: allDocs.filter(d => d.projectId === p.id).length,
+        files: allFiles.filter(f => f.projectId === p.id).length,
+        documentCategories: allDocs.filter(d => d.projectId === p.id).reduce((acc, doc) => {
+          const cat = doc.category || "Autre";
+          acc[cat] = (acc[cat] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+      },
+    };
+  });
 }
 
 export async function updateProjectLogoAction(projectId: string, base64: string) {

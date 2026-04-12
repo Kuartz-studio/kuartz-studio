@@ -4,6 +4,7 @@ import { desc, eq, like, or, and, inArray } from "drizzle-orm";
 import { TasksTable } from "@/components/tasks/TasksTable";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { verifySession } from "@/lib/auth/session";
 
 export default async function GlobalTasksPage({
   searchParams,
@@ -16,6 +17,8 @@ export default async function GlobalTasksPage({
   const assignee = params.assignee as string | undefined;
   const priority = params.priority as string | undefined;
   const tag = params.tag as string | undefined;
+
+  const session = await verifySession();
 
   const allProjects = await db.select({ id: projects.id, name: projects.name, slug: projects.slug, logoBase64: projects.logoBase64 }).from(projects);
   const allUsers = await db.select({ id: users.id, name: users.name, email: users.email, avatarBase64: users.avatarBase64, role: users.role }).from(users);
@@ -128,7 +131,9 @@ export default async function GlobalTasksPage({
         allUsers={usersForDropdown}
         allProjects={allProjects}
         projectUserMap={projectUserMap}
+        currentUserId={session?.userId}
       />
     </div>
   );
 }
+
