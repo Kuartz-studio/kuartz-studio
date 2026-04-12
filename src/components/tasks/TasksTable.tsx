@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { StatusIcon, PriorityIcon, AvatarCustom } from "@/components/ui/table-icons";
@@ -439,6 +440,7 @@ export function TasksTable({
 
   // === OPTIMISTIC STATE ===
   const [localTasks, setLocalTasks] = useState(serverTasks);
+  const [showDone, setShowDone] = useState(true);
 
   useEffect(() => {
     setLocalTasks(serverTasks);
@@ -539,9 +541,13 @@ export function TasksTable({
     setSortConfig({ key, direction });
   };
 
+  const filteredTasks = useMemo(() => {
+    return localTasks.filter(t => showDone ? true : t.status !== "DONE");
+  }, [localTasks, showDone]);
+
   const sortedTasks = useMemo(() => {
-    if (!sortConfig) return localTasks;
-    return [...localTasks].sort((a, b) => {
+    if (!sortConfig) return filteredTasks;
+    return [...filteredTasks].sort((a, b) => {
       let valA: any, valB: any;
       switch (sortConfig.key) {
         case "id":
@@ -562,9 +568,9 @@ export function TasksTable({
       if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     });
-  }, [localTasks, sortConfig]);
+  }, [filteredTasks, sortConfig]);
 
-  if (localTasks.length === 0) {
+  if (filteredTasks.length === 0) {
     return (
       <div className="text-center p-8 bg-card rounded-xl border flex flex-col items-center justify-center gap-3">
         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -695,6 +701,16 @@ export function TasksTable({
               })}
             </tbody>
           </table>
+        </div>
+        
+        {/* Footer actions */}
+        <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] p-3 px-4 flex justify-end">
+          <div className="flex items-center gap-2">
+            <Switch id="show-done" checked={showDone} onCheckedChange={setShowDone} />
+            <label htmlFor="show-done" className="text-[12px] font-medium text-[var(--color-muted-foreground)] cursor-pointer select-none">
+              Afficher les tâches terminées
+            </label>
+          </div>
         </div>
       </div>
 
