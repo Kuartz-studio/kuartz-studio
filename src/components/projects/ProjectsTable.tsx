@@ -383,7 +383,7 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
             return (
               <tr key={project.id} className={cn(
                 "border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)] transition-colors group",
-                isMyRecord && "bg-[var(--primary)]/[0.04]"
+                isMyRecord && "bg-primary/5"
               )}>
                 {/* Logo */}
               <td className="px-4 py-2">

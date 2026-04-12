@@ -596,10 +596,13 @@ export function TasksTable({
             <tbody className={cn("transition-opacity", isPending && "opacity-70")}>
               {sortedTasks.map((task) => {
                 const isMyTask = currentUserId ? task.assignees.some(a => a.user.id === currentUserId) : false;
+                const isDone = task.status === "DONE";
                 return (
                   <tr key={task.id} className={cn(
-                    "group border-b last:border-0 border-[var(--color-border)] hover:bg-[var(--color-muted)] transition-colors",
-                    isMyTask && "bg-[var(--primary)]/[0.04]"
+                    "group border-b last:border-0 border-[var(--color-border)] transition-colors",
+                    isDone ? "opacity-50" : "hover:bg-[var(--color-muted)]",
+                    isMyTask && !isDone && "bg-primary/5",
+                    isMyTask && isDone && "bg-primary/5 opacity-40" // a bit more faded if it's both user task and done
                   )}>
                 
                     {/* ID */}
