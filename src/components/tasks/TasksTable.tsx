@@ -446,24 +446,36 @@ export function TasksTable({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const currentStatus = searchParams.get("status") || "all";
-  const showDoneCheckbox = currentStatus !== "active";
+  // Optimistic Filters
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(searchParams.get("status") || "all");
+  const [optimisticAssignee, setOptimisticAssignee] = useState<string | null>(searchParams.get("assignee"));
+
+  useEffect(() => {
+    setOptimisticStatus(searchParams.get("status") || "all");
+    setOptimisticAssignee(searchParams.get("assignee"));
+  }, [searchParams]);
+
+  const showDoneCheckbox = optimisticStatus !== "active";
+  const myTasksChecked = optimisticAssignee === currentUserId;
 
   const handleShowDoneChange = (val: boolean) => {
+    const newStatus = val ? "all" : "active";
+    setOptimisticStatus(newStatus);
+    
     const params = new URLSearchParams(searchParams.toString());
     if (val) params.delete("status");
     else params.set("status", "active");
-    router.push(pathname + "?" + params.toString());
+    startTransition(() => router.push(pathname + "?" + params.toString()));
   };
 
-  const currentAssignee = searchParams.get("assignee");
-  const myTasksChecked = currentAssignee === currentUserId;
-
   const handleMyTasksChange = (val: boolean) => {
+    const newAssignee = (val && currentUserId) ? currentUserId : null;
+    setOptimisticAssignee(newAssignee);
+    
     const params = new URLSearchParams(searchParams.toString());
-    if (val && currentUserId) params.set("assignee", currentUserId);
+    if (newAssignee) params.set("assignee", newAssignee);
     else params.delete("assignee");
-    router.push(pathname + "?" + params.toString());
+    startTransition(() => router.push(pathname + "?" + params.toString()));
   };
 
   useEffect(() => {
@@ -565,9 +577,21 @@ export function TasksTable({
     setSortConfig({ key, direction });
   };
 
+  const filteredTasks = useMemo(() => {
+    return localTasks.filter(t => {
+      if (optimisticStatus === "active") {
+        if (t.status === "DONE" || t.status === "CANCELED") return false;
+      }
+      if (optimisticAssignee) {
+        if (!t.assignees.some(a => a.user.id === optimisticAssignee)) return false;
+      }
+      return true;
+    });
+  }, [localTasks, optimisticStatus, optimisticAssignee]);
+
   const sortedTasks = useMemo(() => {
-    if (!sortConfig) return localTasks;
-    return [...localTasks].sort((a, b) => {
+    if (!sortConfig) return filteredTasks;
+    return [...filteredTasks].sort((a, b) => {
       let valA: any, valB: any;
       switch (sortConfig.key) {
         case "id":
@@ -588,9 +612,9 @@ export function TasksTable({
       if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     });
-  }, [localTasks, sortConfig]);
+  }, [filteredTasks, sortConfig]);
 
-  if (localTasks.length === 0) {
+  if (filteredTasks.length === 0) {
     return (
       <div className="text-center p-8 bg-card rounded-xl border flex flex-col items-center justify-center gap-3">
         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
