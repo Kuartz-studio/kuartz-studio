@@ -21,6 +21,7 @@ export const projects = sqliteTable("project", {
     };
   }>(),
   priority: integer("priority").default(0),
+  order: integer("order").default(0),
   targetDate: integer("target_date", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()).$onUpdate(() => new Date()),

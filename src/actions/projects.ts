@@ -215,7 +215,7 @@ export async function updateProjectUsersAction(projectId: string, userIds: strin
 }
 
 export async function getProjectsWithUsers() {
-  const allProjects = await db.select().from(projects);
+  const allProjects = await db.select().from(projects).orderBy(projects.order);
   const allLinks = await db
     .select({ projectId: projectToUser.projectId, userId: projectToUser.userId, role: projectToUser.role, userName: users.name, userAvatar: users.avatarBase64 })
     .from(projectToUser)
@@ -297,4 +297,25 @@ export async function regeneratePortalTokenAction(projectId: string) {
   const newToken = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   await db.update(projects).set({ clientPortalToken: newToken }).where(eq(projects.id, projectId));
   revalidatePath(`/projects`);
+}
+
+export async function updateProjectsOrderAction(orderedIds: string[]) {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) return { error: "Non autorisé" };
+
+  try {
+    // Drizzle currently requires separate update calls since SQLite doesn't easily support bulk upserting order indexes
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < orderedIds.length; i++) {
+        await tx.update(projects)
+          .set({ order: i })
+          .where(eq(projects.id, orderedIds[i] as string));
+      }
+    });
+
+    revalidatePath("/projects");
+    return { success: true };
+  } catch {
+    return { error: "Erreur lors de la sauvegarde de l'ordre" };
+  }
 }

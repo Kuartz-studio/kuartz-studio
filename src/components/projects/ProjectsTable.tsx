@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useTransition, useEffect } from "react";
 import { toast } from "sonner";
-import { PenLine, Trash2, Check, ExternalLink, FolderKanban, ArrowUpDown, MoreHorizontal } from "lucide-react";
+import { PenLine, Trash2, Check, ExternalLink, FolderKanban, ArrowUpDown, MoreHorizontal, GripVertical } from "lucide-react";
+import { Reorder } from "motion/react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -10,7 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AvatarCustom, PriorityIcon } from "@/components/ui/table-icons";
-import { updateProjectAction, updateProjectUsersAction, updateProjectLogoAction, deleteProjectAction } from "@/actions/projects";
+import { updateProjectAction, updateProjectUsersAction, updateProjectLogoAction, deleteProjectAction, updateProjectsOrderAction } from "@/actions/projects";
 import { ImageUpload } from "@/components/shared/ImageUpload";
 import Link from "next/link";
 import { PortalSettingsForm } from "@/components/client-portal/PortalSettingsForm";
@@ -360,12 +361,23 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
     });
   }, [localProjects, sortConfig]);
 
+  const handleReorder = (newOrder: ProjectRow[]) => {
+    // Only reorder if we are not actively sorting by a custom column
+    if (sortConfig) return;
+    setLocalProjects(newOrder); // Optimistic visual update
+    
+    startTransition(() => {
+      updateProjectsOrderAction(newOrder.map(p => p.id));
+    });
+  };
+
   return (
     <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-card)] flex flex-col flex-1 min-h-0">
       <div className="overflow-auto flex-1">
       <table className="text-sm border-collapse w-full relative">
         <thead className="bg-[var(--color-muted)] sticky top-0 z-10">
           <tr>
+            <th className="w-8 border-b border-[var(--color-border)]"></th>
             <th className="px-4 py-3 text-left w-16 whitespace-nowrap border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Logo</span>
             </th>
@@ -379,14 +391,27 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
             <th className="px-2 py-3 text-center w-12 border-b border-[var(--color-border)]"></th>
           </tr>
         </thead>
-        <tbody>
+        <Reorder.Group as="tbody" values={sortConfig ? sortedProjects : localProjects} onReorder={handleReorder}>
           {sortedProjects.map((project) => {
             const isMyRecord = currentUserId ? project.users.some(u => u.id === currentUserId) : false;
             return (
-              <tr key={project.id} className={cn(
-                "border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)] transition-colors group",
-                isMyRecord && "bg-primary/5"
-              )}>
+              <Reorder.Item 
+                as="tr"
+                key={project.id} 
+                value={project}
+                dragListener={!sortConfig}
+                className={cn(
+                  "border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)] transition-colors group bg-[var(--color-card)]",
+                  isMyRecord && "bg-primary/5 hover:bg-primary/10"
+                )}
+              >
+                {/* Drag Handle */}
+                <td className="px-2 py-3 text-center align-middle">
+                  {!sortConfig && (
+                    <GripVertical size={16} className="text-muted-foreground/30 hover:text-foreground cursor-grab active:cursor-grabbing mx-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                  )}
+                </td>
+
                 {/* Logo */}
               <td className="px-4 py-2">
                 <ImageUpload
@@ -476,9 +501,9 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
                   </DropdownMenuContent>
                 </DropdownMenu>
               </td>
-            </tr>
+              </Reorder.Item>
           )})}
-        </tbody>
+        </Reorder.Group>
       </table>
       </div>
 
