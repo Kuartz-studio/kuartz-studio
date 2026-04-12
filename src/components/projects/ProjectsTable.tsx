@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
-import { PenLine, Trash2, Check, ExternalLink, FolderKanban } from "lucide-react";
+import { useState, useMemo, useTransition, useEffect } from "react";
+import { toast } from "sonner";
+import { PenLine, Trash2, Check, ExternalLink, FolderKanban, ArrowUpDown, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -228,16 +230,134 @@ function UsersCell({ projectUsers, allUsers, onSave }: { projectUsers: ProjectUs
 // ---------------------------------------------------------------------------
 // Main Table
 // ---------------------------------------------------------------------------
-export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; allUsers: UserRecord[] }) {
+
+function SortableHeader({ label, sortKey, sortConfig, onSort, align = "left", className = "" }: { label: string, sortKey: string, sortConfig: { key: string, direction: "asc" | "desc" } | null, onSort: (key: string) => void, align?: "left" | "center" | "right", className?: string }) {
+  return (
+    <th className={cn("px-4 py-3 border-b border-[var(--color-border)]", className)}>
+      <button 
+        className={cn("flex items-center gap-1.5 text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide hover:text-[var(--color-foreground)] transition-colors outline-none", align === "center" && "mx-auto", align === "right" && "ml-auto")}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        <ArrowUpDown className="h-3 w-3 opacity-50" />
+      </button>
+    </th>
+  );
+}
+
+import { cn } from "@/lib/utils";
+
+export function ProjectsTable({ projects: serverProjects, allUsers, currentUserId }: { projects: ProjectRow[]; allUsers: UserRecord[]; currentUserId?: string }) {
   const [isPending, startTransition] = useTransition();
   const [settingsProject, setSettingsProject] = useState<ProjectRow | null>(null);
+
+  // === OPTIMISTIC STATE ===
+  const [localProjects, setLocalProjects] = useState(serverProjects);
+
+  // Resync when server data changes (after revalidation: add/delete/duplicate)
+  useEffect(() => {
+    setLocalProjects(serverProjects);
+  }, [serverProjects.length]);
+
+  // Filter out admins from the users dropdown (admins have implicit access)
+  const nonAdminUsers = useMemo(() => allUsers.filter(u => u.role !== "admin"), [allUsers]);
+
+  // --- Optimistic update helpers ---
+  const optimisticUpdate = (projectId: string, patch: Partial<ProjectRow>) => {
+    setLocalProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...patch } : p));
+  };
+
+  const handleUpdateField = (projectId: string, field: string, value: any) => {
+    const previous = localProjects;
+    optimisticUpdate(projectId, { [field]: value } as any);
+
+    startTransition(async () => {
+      const res = await updateProjectAction(projectId, { [field]: value });
+      if (res?.error) {
+        setLocalProjects(previous);
+        toast.error(res.error);
+      } else {
+        toast.success("Sauvegardé");
+      }
+    });
+  };
+
+  const handleUpdateUsers = (projectId: string, userIds: string[]) => {
+    const previous = localProjects;
+    // Build optimistic users list from allUsers
+    const newUsers = userIds.map(id => {
+      const u = allUsers.find(u => u.id === id);
+      return u ? { id: u.id, name: u.name, avatarBase64: u.avatarBase64, role: "member" } : null;
+    }).filter(Boolean) as ProjectUser[];
+    optimisticUpdate(projectId, { users: newUsers });
+
+    startTransition(async () => {
+      const res = await updateProjectUsersAction(projectId, userIds);
+      if (res?.error) {
+        setLocalProjects(previous);
+        toast.error(res.error);
+      } else {
+        toast.success("Utilisateurs mis à jour");
+      }
+    });
+  };
+
+  const handleUploadLogo = (projectId: string, base64: string) => {
+    const previous = localProjects;
+    optimisticUpdate(projectId, { logoBase64: base64 });
+
+    startTransition(async () => {
+      const res = await updateProjectLogoAction(projectId, base64);
+      if (res?.error) {
+        setLocalProjects(previous);
+        toast.error(res.error);
+      } else {
+        toast.success("Logo mis à jour");
+      }
+    });
+  };
 
   const handleDelete = async (id: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer définitivement ce projet ?")) {
       await deleteProjectAction(id);
       setSettingsProject(null);
+      toast.success("Projet supprimé");
     }
   };
+
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedProjects = useMemo(() => {
+    if (!sortConfig) return localProjects;
+    return [...localProjects].sort((a, b) => {
+      let valA: any, valB: any;
+      switch (sortConfig.key) {
+        case "name":
+          valA = a.name.toLowerCase(); valB = b.name.toLowerCase(); break;
+        case "users":
+          valA = a.users[0]?.name ?? ""; valB = b.users[0]?.name ?? ""; break;
+        case "priority":
+          valA = a.priority ?? 0; valB = b.priority ?? 0; break;
+        case "progress":
+          valA = a.contentCounts.tasks > 0 ? a.contentCounts.tasksDone / a.contentCounts.tasks : 0;
+          valB = b.contentCounts.tasks > 0 ? b.contentCounts.tasksDone / b.contentCounts.tasks : 0;
+          break;
+        default:
+          valA = 0; valB = 0;
+      }
+      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [localProjects, sortConfig]);
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-card)] flex flex-col">
@@ -247,34 +367,29 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
             <th className="px-4 py-3 text-left w-16 border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Logo</span>
             </th>
-            <th className="px-4 py-3 text-left w-[25%] border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Projet</span>
-            </th>
-            <th className="px-4 py-3 text-left border-b border-[var(--color-border)]">
+            <SortableHeader label="Projet" sortKey="name" sortConfig={sortConfig} onSort={requestSort} className="w-[20%]" />
+            <th className="px-4 py-3 text-left w-full border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Lien (URL)</span>
             </th>
-            <th className="px-4 py-3 text-left w-[25%] border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Utilisateurs</span>
-            </th>
-            <th className="px-4 py-3 text-center w-20 border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Priorité</span>
-            </th>
-            <th className="px-4 py-3 text-center w-28 border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Avancement</span>
-            </th>
-            <th className="px-2 py-3 text-center w-24 border-b border-[var(--color-border)]">
-              <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Actions</span>
-            </th>
+            <SortableHeader label="Utilisateurs" sortKey="users" sortConfig={sortConfig} onSort={requestSort} className="w-36" />
+            <SortableHeader label="Priorité" sortKey="priority" sortConfig={sortConfig} onSort={requestSort} align="center" className="w-20" />
+            <SortableHeader label="Avancement" sortKey="progress" sortConfig={sortConfig} onSort={requestSort} align="center" className="w-28" />
+            <th className="px-2 py-3 text-center w-12 border-b border-[var(--color-border)]"></th>
           </tr>
         </thead>
         <tbody>
-          {projects.map((project) => (
-            <tr key={project.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)]/40 transition-colors group">
-              {/* Logo */}
+          {sortedProjects.map((project) => {
+            const isMyRecord = currentUserId ? project.users.some(u => u.id === currentUserId) : false;
+            return (
+              <tr key={project.id} className={cn(
+                "border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)] transition-colors group",
+                isMyRecord && "bg-[var(--primary)]/[0.04]"
+              )}>
+                {/* Logo */}
               <td className="px-4 py-2">
                 <ImageUpload
                   currentImage={project.logoBase64}
-                  onUpload={async (base64) => { await updateProjectLogoAction(project.id, base64); }}
+                  onUpload={async (base64) => { handleUploadLogo(project.id, base64); }}
                   shape="square"
                   compact
                   fallbackLabel={project.name}
@@ -285,7 +400,7 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
               <td className="px-4 py-2">
                 <EditableTextCell
                   value={project.name}
-                  onSave={(v) => startTransition(() => { updateProjectAction(project.id, { name: v }) })}
+                  onSave={(v) => handleUpdateField(project.id, "name", v)}
                   placeholder="Nom du projet"
                   className="font-medium text-[var(--color-foreground)]"
                 />
@@ -295,16 +410,16 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
               <td className="px-4 py-2">
                 <UrlCell
                   value={project.url}
-                  onSave={(url) => startTransition(() => { updateProjectAction(project.id, { url }) })}
+                  onSave={(url) => handleUpdateField(project.id, "url", url)}
                 />
               </td>
 
-              {/* Users (multi-select) */}
+              {/* Users (multi-select) — admins excluded */}
               <td className="px-4 py-2">
                 <UsersCell
                   projectUsers={project.users}
-                  allUsers={allUsers}
-                  onSave={(userIds) => startTransition(() => { updateProjectUsersAction(project.id, userIds) })}
+                  allUsers={nonAdminUsers}
+                  onSave={(userIds) => handleUpdateUsers(project.id, userIds)}
                 />
               </td>
 
@@ -313,7 +428,7 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
                 <div className="flex justify-center">
                   <PriorityCell
                     value={project.priority ?? 0}
-                    onSave={(v) => startTransition(() => { updateProjectAction(project.id, { priority: v }) })}
+                    onSave={(v) => handleUpdateField(project.id, "priority", v)}
                   />
                 </div>
               </td>
@@ -343,23 +458,24 @@ export function ProjectsTable({ projects, allUsers }: { projects: ProjectRow[]; 
 
               {/* Actions */}
               <td className="px-2 py-2 text-center">
-                <div className="flex items-center justify-center gap-0.5">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setSettingsProject(project); }} 
-                    className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md" 
-                    title="Configuration du projet"
-                  >
-                    <PenLine size={15} />
-                  </button>
-                  <Link href={`/client/${project.slug}-${project.clientPortalToken}`} target="_blank">
-                    <button className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md" title="Vue Client">
-                      <ExternalLink size={15} />
-                    </button>
-                  </Link>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors outline-none mx-auto cursor-pointer">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[160px]">
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSettingsProject(project); }} className="cursor-pointer">
+                      <PenLine className="h-4 w-4 mr-2" />
+                      Configuration
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); window.open(`/client/${project.slug}-${project.clientPortalToken}`, '_blank'); }} className="cursor-pointer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Vue Client
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </table>
 

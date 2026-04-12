@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { markActivityReadAction, markAllActivitiesReadAction } from "@/actions/activities";
-import { CheckCheck, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { CheckCheck, Eye, EyeOff, ExternalLink, ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -76,9 +78,52 @@ function AvatarMini({ name, avatarSrc }: { name: string | null; avatarSrc: strin
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
+import { cn } from "@/lib/utils";
+
+function SortableHeader({ label, sortKey, sortConfig, onSort, align = "left", className = "" }: { label: string, sortKey: string, sortConfig: { key: string, direction: "asc" | "desc" } | null, onSort: (key: string) => void, align?: "left" | "center" | "right", className?: string }) {
+  return (
+    <th className={cn("px-4 py-2.5 font-medium border-b border-[var(--color-border)]", className)}>
+      <button 
+        className={cn("flex items-center gap-1.5 text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide hover:text-[var(--color-foreground)] transition-colors outline-none", align === "center" && "mx-auto", align === "right" && "ml-auto")}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        <ArrowUpDown className="h-3 w-3 opacity-50" />
+      </button>
+    </th>
+  );
+}
+
 export function ActivityTable({ activities }: { activities: ActivityRow[] }) {
   const [localActivities, setLocalActivities] = useState(activities);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedActivities = useMemo(() => {
+    if (!sortConfig) return localActivities;
+    return [...localActivities].sort((a, b) => {
+      let valA: any, valB: any;
+      switch (sortConfig.key) {
+        case "type": valA = TYPE_CONFIG[a.type]?.label || a.type; valB = TYPE_CONFIG[b.type]?.label || b.type; break;
+        case "user": valA = a.userName?.toLowerCase() ?? ""; valB = b.userName?.toLowerCase() ?? ""; break;
+        case "date": valA = a.createdAt ? new Date(a.createdAt).getTime() : 0; valB = b.createdAt ? new Date(b.createdAt).getTime() : 0; break;
+        default: valA = 0; valB = 0;
+      }
+      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [localActivities, sortConfig]);
 
   const unreadCount = localActivities.filter(a => !a.read).length;
 
@@ -149,17 +194,17 @@ export function ActivityTable({ activities }: { activities: ActivityRow[] }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30 text-xs text-muted-foreground uppercase tracking-wider">
-                <th className="px-4 py-2.5 text-left font-medium w-8"></th>
-                <th className="px-4 py-2.5 text-left font-medium">Type</th>
-                <th className="px-4 py-2.5 text-left font-medium">Utilisateur</th>
-                <th className="px-4 py-2.5 text-left font-medium">Description</th>
-                <th className="px-4 py-2.5 text-left font-medium">Détail</th>
-                <th className="px-4 py-2.5 text-left font-medium">Date</th>
-                <th className="px-4 py-2.5 text-center font-medium w-20">Actions</th>
+                <th className="px-4 py-2.5 text-left font-medium w-8 border-b border-[var(--color-border)]"></th>
+                <SortableHeader label="Type" sortKey="type" sortConfig={sortConfig} onSort={requestSort} />
+                <SortableHeader label="Utilisateur" sortKey="user" sortConfig={sortConfig} onSort={requestSort} />
+                <th className="px-4 py-2.5 text-left font-medium border-b border-[var(--color-border)]"><span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Description</span></th>
+                <th className="px-4 py-2.5 text-left font-medium border-b border-[var(--color-border)]"><span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Détail</span></th>
+                <SortableHeader label="Date" sortKey="date" sortConfig={sortConfig} onSort={requestSort} />
+                <th className="px-4 py-2.5 text-center font-medium w-16 border-b border-[var(--color-border)]"></th>
               </tr>
             </thead>
             <tbody>
-              {localActivities.map((activity) => {
+              {sortedActivities.map((activity) => {
                 const typeInfo = getTypeInfo(activity.type);
                 const metaDesc = getMetaDescription(activity);
                 const link = getEntityLink(activity);
@@ -223,33 +268,31 @@ export function ActivityTable({ activities }: { activities: ActivityRow[] }) {
                     </td>
 
                     {/* Actions */}
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center justify-center gap-1">
-                        {link && (
-                          <Link href={link} title="Accéder">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                              <ExternalLink size={14} />
-                            </Button>
-                          </Link>
-                        )}
-                        {!activity.read && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-primary"
-                            onClick={() => handleMarkRead(activity.id)}
-                            disabled={isPending}
-                            title="Marquer comme lu"
-                          >
-                            <Eye size={14} />
-                          </Button>
-                        )}
-                        {activity.read && (
-                          <span className="text-muted-foreground/40" title="Lu">
-                            <EyeOff size={14} />
-                          </span>
-                        )}
-                      </div>
+                    <td className="px-4 py-2.5 text-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors outline-none mx-auto cursor-pointer">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[180px]">
+                          {link && (
+                            <DropdownMenuItem onClick={() => router.push(link)} className="cursor-pointer">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Accéder
+                            </DropdownMenuItem>
+                          )}
+                          {!activity.read ? (
+                            <DropdownMenuItem onClick={() => handleMarkRead(activity.id)} disabled={isPending} className="cursor-pointer">
+                              <Eye className="h-4 w-4 mr-2" />
+                              Marquer comme lu
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem disabled className="opacity-50">
+                              <EyeOff className="h-4 w-4 mr-2" />
+                              Lu
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 );

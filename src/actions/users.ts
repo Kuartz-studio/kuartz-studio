@@ -9,43 +9,63 @@ import { base64ImageSchema } from "@/lib/validators/image";
 
 export async function updateUserAction(userId: string, data: { name?: string; email?: string; role?: "admin" | "employee" | "customer" }) {
   const session = await verifySession();
-  if (!session || session.role !== "admin") return;
+  if (!session || session.role !== "admin") return { error: "Non autorisé" };
 
-  await db.update(users).set(data).where(eq(users.id, userId));
-  revalidatePath("/users");
+  try {
+    await db.update(users).set(data).where(eq(users.id, userId));
+    revalidatePath("/users");
+    return { success: true };
+  } catch {
+    return { error: "Erreur lors de la mise à jour" };
+  }
 }
 
 export async function updateUserProjectsAction(userId: string, projectIds: string[]) {
   const session = await verifySession();
-  if (!session || session.role !== "admin") return;
+  if (!session || session.role !== "admin") return { error: "Non autorisé" };
 
-  await db.delete(projectToUser).where(eq(projectToUser.userId, userId));
-  if (projectIds.length > 0) {
-    await db.insert(projectToUser).values(projectIds.map(projectId => ({ projectId, userId, role: "member" as const })));
+  try {
+    await db.delete(projectToUser).where(eq(projectToUser.userId, userId));
+    if (projectIds.length > 0) {
+      await db.insert(projectToUser).values(projectIds.map(projectId => ({ projectId, userId, role: "member" as const })));
+    }
+    revalidatePath("/users");
+    revalidatePath("/projects");
+    return { success: true };
+  } catch {
+    return { error: "Erreur lors de la mise à jour des projets" };
   }
-  revalidatePath("/users");
-  revalidatePath("/projects");
 }
 
 export async function deleteUserAction(userId: string) {
   const session = await verifySession();
-  if (!session || session.role !== "admin") return;
+  if (!session || session.role !== "admin") return { error: "Non autorisé" };
 
-  await db.delete(users).where(eq(users.id, userId));
-  revalidatePath("/users");
+  try {
+    await db.delete(users).where(eq(users.id, userId));
+    revalidatePath("/users");
+    return { success: true };
+  } catch {
+    return { error: "Erreur lors de la suppression" };
+  }
 }
 
 export async function updateUserAvatarAction(userId: string, base64: string) {
   const session = await verifySession();
-  if (!session || session.role !== "admin") return;
+  if (!session || session.role !== "admin") return { error: "Non autorisé" };
 
   const parsed = base64ImageSchema.safeParse(base64);
-  if (!parsed.success) return;
+  if (!parsed.success) return { error: "Image invalide" };
 
-  await db.update(users).set({ avatarBase64: parsed.data }).where(eq(users.id, userId));
-  revalidatePath("/users");
-  revalidatePath("/tasks");
-  revalidatePath("/projects");
+  try {
+    await db.update(users).set({ avatarBase64: parsed.data }).where(eq(users.id, userId));
+    revalidatePath("/users");
+    revalidatePath("/tasks");
+    revalidatePath("/projects");
+    return { success: true };
+  } catch {
+    return { error: "Erreur lors de l'upload" };
+  }
 }
 
 export async function createUserAction(data: { name: string; email: string; role: "admin" | "employee" | "customer" }) {

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo, useTransition, useEffect } from "react";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Check, X, CalendarIcon, Plus, Trash2, CopyPlus, PenLine } from "lucide-react";
+import { Check, X, CalendarIcon, Plus, Trash2, CopyPlus, PenLine, ArrowUpDown, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
@@ -403,8 +405,22 @@ function AssigneeCell({ assignees, allUsers, onSave }: { assignees: TaskAssignee
 // Main
 // ---------------------------------------------------------------------------
 
+function SortableHeader({ label, sortKey, sortConfig, onSort, align = "left", className = "" }: { label: string, sortKey: string, sortConfig: { key: string, direction: "asc" | "desc" } | null, onSort: (key: string) => void, align?: "left" | "center" | "right", className?: string }) {
+  return (
+    <th className={cn("bg-[var(--color-muted)] border-b border-[var(--color-border)]", className)}>
+      <button 
+        className={cn("flex items-center gap-1.5 text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide hover:text-[var(--color-foreground)] transition-colors outline-none", align === "center" && "mx-auto", align === "right" && "ml-auto")}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        <ArrowUpDown className="h-3 w-3 opacity-50" />
+      </button>
+    </th>
+  );
+}
+
 export function TasksTable({ 
-  tasks,
+  tasks: serverTasks,
   allTags,
   allUsers,
   allProjects,
@@ -415,25 +431,140 @@ export function TasksTable({
   allTags: DbTag[];
   allUsers: UserRecord[];
   allProjects: ProjectRecord[];
-  /** Map of projectId → userId[] for project membership filtering */
   projectUserMap: Record<string, string[]>;
-  /** Current logged-in user ID for row highlighting */
   currentUserId?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [detailTask, setDetailTask] = useState<EnrichedTask | null>(null);
 
+  // === OPTIMISTIC STATE ===
+  const [localTasks, setLocalTasks] = useState(serverTasks);
+
+  useEffect(() => {
+    setLocalTasks(serverTasks);
+  }, [serverTasks.length]);
+
+  const optimisticUpdateTask = (taskId: string, patch: Partial<EnrichedTask>) => {
+    setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...patch } : t));
+  };
+
+  const handleUpdateTitle = (taskId: string, title: string) => {
+    const previous = localTasks;
+    optimisticUpdateTask(taskId, { title });
+    startTransition(async () => {
+      const res = await updateTaskAction(taskId, { title });
+      if (res?.error) { setLocalTasks(previous); toast.error(res.error); }
+      else toast.success("Sauvegardé");
+    });
+  };
+
+  const handleUpdatePriority = (taskId: string, priority: number) => {
+    const previous = localTasks;
+    optimisticUpdateTask(taskId, { priority });
+    startTransition(async () => {
+      const res = await updateTaskAction(taskId, { priority });
+      if (res?.error) { setLocalTasks(previous); toast.error(res.error); }
+      else toast.success("Priorité mise à jour");
+    });
+  };
+
+  const handleUpdateDate = (taskId: string, dateStr: string | null) => {
+    const previous = localTasks;
+    optimisticUpdateTask(taskId, { targetDate: dateStr });
+    startTransition(async () => {
+      const res = await updateTaskAction(taskId, { targetDate: dateStr ? new Date(dateStr) : null });
+      if (res?.error) { setLocalTasks(previous); toast.error(res.error); }
+      else toast.success("Échéance mise à jour");
+    });
+  };
+
+  const handleUpdateStatus = (taskId: string, status: string) => {
+    const previous = localTasks;
+    optimisticUpdateTask(taskId, { status });
+    startTransition(async () => {
+      await updateTaskStatusAction(taskId, status as any);
+      toast.success("Statut mis à jour");
+    });
+  };
+
+  const handleUpdateAssignees = (taskId: string, userIds: string[]) => {
+    const previous = localTasks;
+    const newAssignees = userIds.map(id => {
+      const u = allUsers.find(u => u.id === id);
+      return u ? { user: u } : null;
+    }).filter(Boolean) as EnrichedTask["assignees"];
+    optimisticUpdateTask(taskId, { assignees: newAssignees });
+    startTransition(async () => {
+      const res = await updateTaskAssigneesAction(taskId, userIds);
+      if (res?.error) { setLocalTasks(previous); toast.error(res.error); }
+      else toast.success("Assignation mise à jour");
+    });
+  };
+
+  const handleUpdateTags = (taskId: string, newTags: EnrichedTask["tags"]) => {
+    const previous = localTasks;
+    optimisticUpdateTask(taskId, { tags: newTags });
+    startTransition(async () => {
+      await updateTaskTagsAction(taskId, newTags.map(t => t.tag.id));
+      toast.success("Tags mis à jour");
+    });
+  };
+
   const handleDelete = (task: EnrichedTask) => {
-    if (confirm(`Supprimer la tâche "${task.title}" ?`)) {
-      startTransition(() => { deleteTaskAction(task.id); });
-    }
+    if (!confirm(`Supprimer la tâche "${task.title}" ?`)) return;
+    const previous = localTasks;
+    setLocalTasks(prev => prev.filter(t => t.id !== task.id));
+    startTransition(async () => {
+      const res = await deleteTaskAction(task.id);
+      if (res?.error) { setLocalTasks(previous); toast.error(res.error); }
+      else toast.success("Tâche supprimée");
+    });
   };
 
   const handleDuplicate = (task: EnrichedTask) => {
-    startTransition(() => { duplicateTaskAction(task.id); });
+    startTransition(async () => {
+      const res = await duplicateTaskAction(task.id);
+      if (res?.error) toast.error(res.error);
+      else toast.success("Tâche dupliquée");
+    });
   };
 
-  if (tasks.length === 0) {
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedTasks = useMemo(() => {
+    if (!sortConfig) return localTasks;
+    return [...localTasks].sort((a, b) => {
+      let valA: any, valB: any;
+      switch (sortConfig.key) {
+        case "id":
+          valA = a.issueNumber ?? 0; valB = b.issueNumber ?? 0; break;
+        case "targetDate":
+          valA = a.targetDate ? new Date(a.targetDate).getTime() : 0;
+          valB = b.targetDate ? new Date(b.targetDate).getTime() : 0; break;
+        case "assignee":
+          valA = a.assignees[0]?.user.name ?? ""; valB = b.assignees[0]?.user.name ?? ""; break;
+        case "status":
+          valA = a.status; valB = b.status; break;
+        case "priority":
+          valA = a.priority; valB = b.priority; break;
+        default:
+          valA = 0; valB = 0;
+      }
+      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [localTasks, sortConfig]);
+
+  if (localTasks.length === 0) {
     return (
       <div className="text-center p-8 bg-card rounded-xl border flex flex-col items-center justify-center gap-3">
         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -451,19 +582,19 @@ export function TasksTable({
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%]">ID</th>
-                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[15%]">Projet</th>
-                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-auto">Titre</th>
-                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%]">Tags</th>
-                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[150px]">Échéance</th>
-                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[160px]">Assigné</th>
-                <th className="px-2 py-3 text-center bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-24">Actions</th>
-                <th className="px-2 py-3 text-center bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%] whitespace-nowrap">St.</th>
-                <th className="px-2 py-3 text-center bg-[var(--color-muted)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-muted-foreground)] uppercase w-[1%] whitespace-nowrap">Pr.</th>
+                <SortableHeader label="ID" sortKey="id" sortConfig={sortConfig} onSort={requestSort} className="px-4 py-3 text-left w-[1%]" />
+                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-[10px] font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide w-[15%]">Projet</th>
+                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-[10px] font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide w-auto">Titre</th>
+                <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-[10px] font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide w-[1%]">Tags</th>
+                <SortableHeader label="Échéance" sortKey="targetDate" sortConfig={sortConfig} onSort={requestSort} className="px-4 py-3 text-left w-[150px]" />
+                <SortableHeader label="Assignation" sortKey="assignee" sortConfig={sortConfig} onSort={requestSort} className="px-4 py-3 text-left w-[160px]" />
+                <SortableHeader label="Statut" sortKey="status" sortConfig={sortConfig} onSort={requestSort} align="center" className="px-2 py-3 w-[1%] whitespace-nowrap" />
+                <SortableHeader label="Prio" sortKey="priority" sortConfig={sortConfig} onSort={requestSort} align="center" className="px-2 py-3 w-[1%] whitespace-nowrap" />
+                <th className="px-2 py-3 text-center bg-[var(--color-muted)] border-b border-[var(--color-border)] w-12"></th>
               </tr>
             </thead>
             <tbody className={cn("transition-opacity", isPending && "opacity-70")}>
-              {tasks.map((task) => {
+              {sortedTasks.map((task) => {
                 const isMyTask = currentUserId ? task.assignees.some(a => a.user.id === currentUserId) : false;
                 return (
                   <tr key={task.id} className={cn(
@@ -487,7 +618,7 @@ export function TasksTable({
                     <td className="px-4 py-2.5">
                       <EditableTitle 
                         value={task.title} 
-                        onSave={(v) => startTransition(() => { updateTaskAction(task.id, { title: v }) })} 
+                        onSave={(v) => handleUpdateTitle(task.id, v)} 
                       />
                     </td>
 
@@ -496,7 +627,7 @@ export function TasksTable({
                       <TagsCell 
                         tags={task.tags} 
                         allTags={allTags} 
-                        onChange={(newTags) => startTransition(() => { updateTaskTagsAction(task.id, newTags.map(t => t.tag.id)) })}
+                        onChange={(newTags) => handleUpdateTags(task.id, newTags)}
                         onCreateTag={async (name, color) => {
                           const newTag = await createTagAction(name, color);
                           return newTag ?? null;
@@ -511,7 +642,7 @@ export function TasksTable({
                       <DateCell 
                         value={task.targetDate} 
                         status={task.status} 
-                        onSave={(v) => startTransition(() => { updateTaskAction(task.id, { targetDate: v ? new Date(v) : null }) })} 
+                        onSave={(v) => handleUpdateDate(task.id, v)} 
                       />
                     </td>
 
@@ -520,45 +651,41 @@ export function TasksTable({
                       <AssigneeCell 
                         assignees={task.assignees} 
                         allUsers={projectUserMap ? allUsers.filter(u => u.role === "admin" || (projectUserMap[task.projectId] ?? []).includes(u.id)) : allUsers} 
-                        onSave={(userIds) => startTransition(() => { updateTaskAssigneesAction(task.id, userIds) })} 
+                        onSave={(userIds) => handleUpdateAssignees(task.id, userIds)} 
                       />
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-2 py-2.5 text-center">
-                      <div className="flex items-center justify-center gap-0.5">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDuplicate(task); }}
-                          className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md"
-                          title="Dupliquer"
-                        >
-                          <CopyPlus size={15} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDetailTask(task); }}
-                          className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors p-1.5 rounded-md"
-                          title="Détails"
-                        >
-                          <PenLine size={15} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(task); }}
-                          className="text-[var(--color-muted-foreground)] hover:text-red-500 hover:bg-red-500/10 transition-colors p-1.5 rounded-md"
-                          title="Supprimer"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
                     </td>
 
                     {/* Statut (icon only, compact) */}
                     <td className="px-2 py-2.5 text-center">
-                      <StatusCell value={task.status} onSave={(v) => startTransition(() => { updateTaskStatusAction(task.id, v as "BACKLOG" | "TODO" | "IN_PROGRESS" | "PAUSED" | "DONE" | "CANCELED") })} />
+                      <StatusCell value={task.status} onSave={(v) => handleUpdateStatus(task.id, v)} />
                     </td>
 
                     {/* Priorité (icon only, compact) */}
                     <td className="px-2 py-2.5 text-center">
-                      <PriorityCell value={task.priority} onSave={(v) => startTransition(() => { updateTaskAction(task.id, { priority: v }) })} />
+                      <PriorityCell value={task.priority} onSave={(v) => handleUpdatePriority(task.id, v)} />
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-2 py-2.5 text-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors outline-none mx-auto cursor-pointer">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px]">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDetailTask(task); }} className="cursor-pointer">
+                            <PenLine className="h-4 w-4 mr-2" />
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(task); }} className="cursor-pointer">
+                            <CopyPlus className="h-4 w-4 mr-2" />
+                            Dupliquer
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete(task); }} className="cursor-pointer text-red-600 focus:bg-red-500/10 focus:text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 );
@@ -589,15 +716,15 @@ export function TasksTable({
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Statut</span>
-                  <StatusCell value={detailTask.status} onSave={(v) => startTransition(() => { updateTaskStatusAction(detailTask.id, v as "BACKLOG" | "TODO" | "IN_PROGRESS" | "PAUSED" | "DONE" | "CANCELED") })} />
+                <StatusCell value={detailTask.status} onSave={(v) => handleUpdateStatus(detailTask.id, v)} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Priorité</span>
-                  <PriorityCell value={detailTask.priority} onSave={(v) => startTransition(() => { updateTaskAction(detailTask.id, { priority: v }) })} />
+                  <PriorityCell value={detailTask.priority} onSave={(v) => handleUpdatePriority(detailTask.id, v)} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Échéance</span>
-                  <DateCell value={detailTask.targetDate} status={detailTask.status} onSave={(v) => startTransition(() => { updateTaskAction(detailTask.id, { targetDate: v ? new Date(v) : null }) })} />
+                  <DateCell value={detailTask.targetDate} status={detailTask.status} onSave={(v) => handleUpdateDate(detailTask.id, v)} />
                 </div>
               </div>
 
@@ -606,7 +733,7 @@ export function TasksTable({
                 <AssigneeCell
                   assignees={detailTask.assignees}
                   allUsers={projectUserMap ? allUsers.filter(u => u.role === "admin" || (projectUserMap[detailTask.projectId] ?? []).includes(u.id)) : allUsers}
-                  onSave={(userIds) => startTransition(() => { updateTaskAssigneesAction(detailTask.id, userIds) })}
+                  onSave={(userIds) => handleUpdateAssignees(detailTask.id, userIds)}
                 />
               </div>
 
@@ -615,7 +742,7 @@ export function TasksTable({
                 <TagsCell
                   tags={detailTask.tags}
                   allTags={allTags}
-                  onChange={(newTags) => startTransition(() => { updateTaskTagsAction(detailTask.id, newTags.map(t => t.tag.id)) })}
+                  onChange={(newTags) => handleUpdateTags(detailTask.id, newTags)}
                   onCreateTag={async (name, color) => {
                     const newTag = await createTagAction(name, color);
                     return newTag ?? null;

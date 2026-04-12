@@ -9,7 +9,10 @@ import { Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { desc } from "drizzle-orm";
 
+import { verifySession } from "@/lib/auth/session";
+
 export default async function ProjectsListPage() {
+  const session = await verifySession();
   const projectsWithUsers = await getProjectsWithUsers();
   const allUsers = await db.select({ id: users.id, name: users.name, avatarBase64: users.avatarBase64, role: users.role }).from(users);
 
@@ -45,7 +48,7 @@ export default async function ProjectsListPage() {
           </CardContent>
         </Card>
       ) : (
-        <ProjectsTable projects={projectsWithUsers} allUsers={usersForTable} />
+        <ProjectsTable projects={projectsWithUsers} allUsers={usersForTable} currentUserId={session?.userId} />
       )}
     </div>
   );

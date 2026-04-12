@@ -11,3 +11,4 @@ Key skills to consult:
 - `.agent/skills/tailwind-v4/SKILL.md` — for any styling
 - `.agent/skills/motion-react/SKILL.md` — for any animation
 - `.agent/skills/forms-zod/SKILL.md` — for any form
+- `.agent/skills/optimistic-updates/SKILL.md` — for any inline edit, data mutation, or toast notification

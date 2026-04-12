@@ -53,21 +53,31 @@ export async function deleteProjectAction(projectId: string) {
 
 export async function updateProjectAction(projectId: string, data: { name?: string; url?: string | null; priority?: number }) {
   const session = await verifySession();
-  if (!session || (session.role !== "admin" && session.role !== "employee")) return;
+  if (!session || (session.role !== "admin" && session.role !== "employee")) return { error: "Non autorisé" };
 
-  await db.update(projects).set(data).where(eq(projects.id, projectId));
-  revalidatePath("/projects");
+  try {
+    await db.update(projects).set(data).where(eq(projects.id, projectId));
+    revalidatePath("/projects");
+    return { success: true };
+  } catch {
+    return { error: "Erreur lors de la mise à jour du projet" };
+  }
 }
 
 export async function updateProjectUsersAction(projectId: string, userIds: string[]) {
   const session = await verifySession();
-  if (!session || (session.role !== "admin" && session.role !== "employee")) return;
+  if (!session || (session.role !== "admin" && session.role !== "employee")) return { error: "Non autorisé" };
 
-  await db.delete(projectToUser).where(eq(projectToUser.projectId, projectId));
-  if (userIds.length > 0) {
-    await db.insert(projectToUser).values(userIds.map(userId => ({ projectId, userId, role: "member" as const })));
+  try {
+    await db.delete(projectToUser).where(eq(projectToUser.projectId, projectId));
+    if (userIds.length > 0) {
+      await db.insert(projectToUser).values(userIds.map(userId => ({ projectId, userId, role: "member" as const })));
+    }
+    revalidatePath("/projects");
+    return { success: true };
+  } catch {
+    return { error: "Erreur lors de la mise à jour des utilisateurs" };
   }
-  revalidatePath("/projects");
 }
 
 export async function getProjectsWithUsers() {
@@ -109,14 +119,19 @@ export async function getProjectsWithUsers() {
 
 export async function updateProjectLogoAction(projectId: string, base64: string) {
   const session = await verifySession();
-  if (!session || (session.role !== "admin" && session.role !== "employee")) return;
+  if (!session || (session.role !== "admin" && session.role !== "employee")) return { error: "Non autorisé" };
 
   const parsed = base64ImageSchema.safeParse(base64);
-  if (!parsed.success) return;
+  if (!parsed.success) return { error: "Image invalide" };
 
-  await db.update(projects).set({ logoBase64: parsed.data }).where(eq(projects.id, projectId));
-  revalidatePath("/projects");
-  revalidatePath("/tasks");
+  try {
+    await db.update(projects).set({ logoBase64: parsed.data }).where(eq(projects.id, projectId));
+    revalidatePath("/projects");
+    revalidatePath("/tasks");
+    return { success: true };
+  } catch {
+    return { error: "Erreur lors de l'upload" };
+  }
 }
 
 export async function updatePortalSettingsAction(projectId: string, settings: any) {

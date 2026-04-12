@@ -2,8 +2,10 @@ import { db } from "@/db";
 import { users, projects, projectToUser } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { UsersTable } from "@/components/users/UsersTable";
+import { verifySession } from "@/lib/auth/session";
 
 export default async function UsersListPage() {
+  const session = await verifySession();
   const allUsers = await db.select().from(users);
   const allProjects = await db.select({ id: projects.id, name: projects.name, slug: projects.slug, logoBase64: projects.logoBase64 }).from(projects);
   const allLinks = await db
@@ -36,7 +38,7 @@ export default async function UsersListPage() {
 
   return (
     <div className="flex flex-col gap-6 flex-1">
-      <UsersTable users={usersWithProjects} allProjects={allProjects} />
+      <UsersTable users={usersWithProjects} allProjects={allProjects} currentUserId={session?.userId} />
     </div>
   );
 }

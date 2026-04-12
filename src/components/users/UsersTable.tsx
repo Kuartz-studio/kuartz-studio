@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
-import { Check, Trash2, Crown, FolderKanban, UserPlus } from "lucide-react";
+import { useState, useMemo, useTransition, useEffect } from "react";
+import { Check, Trash2, Crown, FolderKanban, UserPlus, ArrowUpDown, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
@@ -183,23 +184,149 @@ function ProjectsCell({ userProjects, allProjects, isAdmin, onSave }: {
 // ---------------------------------------------------------------------------
 // Main Table
 // ---------------------------------------------------------------------------
-export function UsersTable({ users, allProjects }: { users: UserRow[]; allProjects: ProjectRecord[] }) {
+import { cn } from "@/lib/utils";
+
+function SortableHeader({ label, sortKey, sortConfig, onSort, align = "left", className = "" }: { label: string, sortKey: string, sortConfig: { key: string, direction: "asc" | "desc" } | null, onSort: (key: string) => void, align?: "left" | "center" | "right", className?: string }) {
+  return (
+    <th className={cn("px-4 py-3 border-b border-[var(--color-border)]", className)}>
+      <button 
+        className={cn("flex items-center gap-1.5 text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide hover:text-[var(--color-foreground)] transition-colors outline-none", align === "center" && "mx-auto", align === "right" && "ml-auto")}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        <ArrowUpDown className="h-3 w-3 opacity-50" />
+      </button>
+    </th>
+  );
+}
+
+export function UsersTable({ users: serverUsers, allProjects, currentUserId }: { users: UserRow[]; allProjects: ProjectRecord[]; currentUserId?: string }) {
   const [isPending, startTransition] = useTransition();
   const [openAdd, setOpenAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "employee" | "customer">("customer");
 
-  // Sort: admins → employees → customers
-  const sorted = useMemo(() => {
-    const roleOrder: Record<string, number> = { admin: 0, employee: 1, customer: 2 };
-    return [...users].sort((a, b) => {
-      const ra = roleOrder[a.role] ?? 9;
-      const rb = roleOrder[b.role] ?? 9;
-      if (ra !== rb) return ra - rb;
-      return (a.name ?? "").localeCompare(b.name ?? "");
+  // === OPTIMISTIC STATE ===
+  const [localUsers, setLocalUsers] = useState(serverUsers);
+
+  // Resync when server list length changes (add/delete)
+  useEffect(() => {
+    setLocalUsers(serverUsers);
+  }, [serverUsers.length]);
+
+  // --- Optimistic helpers ---
+  const optimisticUpdateUser = (userId: string, patch: Partial<UserRow>) => {
+    setLocalUsers(prev => prev.map(u => u.id === userId ? { ...u, ...patch } : u));
+  };
+
+  const handleUpdateField = (userId: string, field: string, value: any) => {
+    const previous = localUsers;
+    optimisticUpdateUser(userId, { [field]: value } as any);
+
+    startTransition(async () => {
+      const res = await updateUserAction(userId, { [field]: value });
+      if (res?.error) {
+        setLocalUsers(previous);
+        toast.error(res.error);
+      } else {
+        toast.success("Sauvegardé");
+      }
     });
-  }, [users]);
+  };
+
+  const handleUpdateProjects = (userId: string, projectIds: string[]) => {
+    const previous = localUsers;
+    const newProjects = projectIds.map(id => {
+      const p = allProjects.find(p => p.id === id);
+      return p ? { id: p.id, name: p.name, slug: p.slug, logoBase64: p.logoBase64 } : null;
+    }).filter(Boolean) as UserRow["projects"];
+    optimisticUpdateUser(userId, { projects: newProjects });
+
+    startTransition(async () => {
+      const res = await updateUserProjectsAction(userId, projectIds);
+      if (res?.error) {
+        setLocalUsers(previous);
+        toast.error(res.error);
+      } else {
+        toast.success("Projets mis à jour");
+      }
+    });
+  };
+
+  const handleUploadAvatar = (userId: string, base64: string) => {
+    const previous = localUsers;
+    optimisticUpdateUser(userId, { avatarBase64: base64 });
+
+    startTransition(async () => {
+      const res = await updateUserAvatarAction(userId, base64);
+      if (res?.error) {
+        setLocalUsers(previous);
+        toast.error(res.error);
+      } else {
+        toast.success("Avatar mis à jour");
+      }
+    });
+  };
+
+  const handleDelete = (userId: string) => {
+    if (!confirm("Supprimer cet utilisateur ?")) return;
+    const previous = localUsers;
+    setLocalUsers(prev => prev.filter(u => u.id !== userId));
+
+    startTransition(async () => {
+      const res = await deleteUserAction(userId);
+      if (res?.error) {
+        setLocalUsers(previous);
+        toast.error(res.error);
+      } else {
+        toast.success("Utilisateur supprimé");
+      }
+    });
+  };
+
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
+  const requestSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sorted = useMemo(() => {
+    let sortedUsers = [...localUsers];
+    
+    if (!sortConfig) {
+      const roleOrder: Record<string, number> = { admin: 0, employee: 1, customer: 2 };
+      return sortedUsers.sort((a, b) => {
+        const ra = roleOrder[a.role] ?? 9;
+        const rb = roleOrder[b.role] ?? 9;
+        if (ra !== rb) return ra - rb;
+        return (a.name ?? "").localeCompare(b.name ?? "");
+      });
+    }
+
+    return sortedUsers.sort((a, b) => {
+      let valA: any, valB: any;
+      switch (sortConfig.key) {
+        case "name":
+          valA = a.name.toLowerCase(); valB = b.name.toLowerCase(); break;
+        case "email":
+          valA = a.email.toLowerCase(); valB = b.email.toLowerCase(); break;
+        case "role":
+          valA = a.role; valB = b.role; break;
+        case "projects":
+          valA = a.projects.length; valB = b.projects.length; break;
+        default:
+          valA = 0; valB = 0;
+      }
+      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [localUsers, sortConfig]);
 
   const handleOpenAdd = () => {
     setNewName("");
@@ -242,31 +369,27 @@ export function UsersTable({ users, allProjects }: { users: UserRow[]; allProjec
               <th className="px-4 py-3 text-left w-14 border-b border-[var(--color-border)]">
                 <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Avatar</span>
               </th>
-              <th className="px-4 py-3 text-left w-[18%] border-b border-[var(--color-border)]">
-                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Nom</span>
-              </th>
-              <th className="px-4 py-3 text-left w-[28%] border-b border-[var(--color-border)]">
-                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Email</span>
-              </th>
-              <th className="px-4 py-3 text-left w-24 border-b border-[var(--color-border)]">
-                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Rôle</span>
-              </th>
-              <th className="px-4 py-3 text-left border-b border-[var(--color-border)]">
-                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Projet</span>
-              </th>
-              <th className="px-4 py-3 text-right w-14 border-b border-[var(--color-border)]"></th>
+              <SortableHeader label="Nom" sortKey="name" sortConfig={sortConfig} onSort={requestSort} className="w-[18%]" />
+              <SortableHeader label="Email" sortKey="email" sortConfig={sortConfig} onSort={requestSort} className="w-[28%]" />
+              <SortableHeader label="Rôle" sortKey="role" sortConfig={sortConfig} onSort={requestSort} className="w-24" />
+              <SortableHeader label="Projet" sortKey="projects" sortConfig={sortConfig} onSort={requestSort} />
+              <th className="px-2 py-3 text-center w-12 border-b border-[var(--color-border)]"></th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((user) => {
               const isAdmin = user.role === "admin";
+              const isMyRecord = currentUserId && user.id === currentUserId;
               return (
-                <tr key={user.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)]/40 transition-colors group">
+                <tr key={user.id} className={cn(
+                  "border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-muted)] transition-colors group",
+                  isMyRecord && "bg-[var(--primary)]/[0.04]"
+                )}>
                   {/* Avatar */}
                   <td className="px-4 py-2">
                     <ImageUpload
                       currentImage={user.avatarBase64}
-                      onUpload={async (base64) => { await updateUserAvatarAction(user.id, base64); }}
+                      onUpload={async (base64) => { handleUploadAvatar(user.id, base64); }}
                       shape="circle"
                       compact
                       fallbackLabel={user.name}
@@ -278,7 +401,7 @@ export function UsersTable({ users, allProjects }: { users: UserRow[]; allProjec
                     <div className="flex items-center gap-1.5">
                       <EditableTextCell
                         value={user.name}
-                        onSave={(v) => startTransition(() => { updateUserAction(user.id, { name: v }) })}
+                        onSave={(v) => handleUpdateField(user.id, "name", v)}
                         placeholder="Nom"
                       />
                       {isAdmin && <Crown size={12} className="text-amber-400 shrink-0" />}
@@ -289,7 +412,7 @@ export function UsersTable({ users, allProjects }: { users: UserRow[]; allProjec
                   <td className="px-4 py-2">
                     <EditableTextCell
                       value={user.email}
-                      onSave={(v) => startTransition(() => { updateUserAction(user.id, { email: v }) })}
+                      onSave={(v) => handleUpdateField(user.id, "email", v)}
                       placeholder="email@example.com"
                     />
                   </td>
@@ -298,7 +421,7 @@ export function UsersTable({ users, allProjects }: { users: UserRow[]; allProjec
                   <td className="px-4 py-2">
                     <RoleCell
                       value={user.role}
-                      onSave={(v) => startTransition(() => { updateUserAction(user.id, { role: v as "admin" | "employee" | "customer" }) })}
+                      onSave={(v) => handleUpdateField(user.id, "role", v)}
                     />
                   </td>
 
@@ -308,22 +431,24 @@ export function UsersTable({ users, allProjects }: { users: UserRow[]; allProjec
                       userProjects={user.projects}
                       allProjects={allProjects}
                       isAdmin={isAdmin}
-                      onSave={(ids) => startTransition(() => { updateUserProjectsAction(user.id, ids) })}
+                      onSave={(ids) => handleUpdateProjects(user.id, ids)}
                     />
                   </td>
 
-                  {/* Delete */}
-                  <td className="px-4 py-2 text-right">
+                  {/* Actions */}
+                  <td className="px-2 py-2.5 text-center">
                     {!isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-muted-foreground)] hover:text-destructive"
-                        onClick={() => startTransition(() => { deleteUserAction(user.id) })}
-                        disabled={isPending}
-                      >
-                        <Trash2 size={14} />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors outline-none mx-auto cursor-pointer">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px]">
+                          <DropdownMenuItem onClick={() => handleDelete(user.id)} className="cursor-pointer text-red-600 focus:bg-red-500/10 focus:text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </td>
                 </tr>
