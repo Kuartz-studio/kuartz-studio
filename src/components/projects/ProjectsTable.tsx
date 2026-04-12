@@ -66,7 +66,7 @@ function EditableTextCell({ value, onSave, placeholder, className }: { value: st
   return (
     <span
       onClick={() => { setDraft(value); setEditing(true); }}
-      className={`text-[13px] truncate block cursor-pointer hover:bg-[var(--color-muted)] px-1 -mx-1 py-0.5 rounded transition-colors ${className ?? ""}`}
+      className={`text-[13px] whitespace-nowrap block cursor-pointer hover:bg-[var(--color-muted)] px-1 -mx-1 py-0.5 rounded transition-colors ${className ?? ""}`}
     >
       {value}
     </span>
@@ -361,14 +361,14 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-card)] flex flex-col">
-      <table className="text-sm border-collapse w-full relative table-fixed">
+      <table className="text-sm border-collapse w-full relative">
         <thead className="bg-[var(--color-muted)]">
           <tr>
-            <th className="px-4 py-3 text-left w-16 border-b border-[var(--color-border)]">
+            <th className="px-4 py-3 text-left w-16 whitespace-nowrap border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Logo</span>
             </th>
-            <SortableHeader label="Projet" sortKey="name" sortConfig={sortConfig} onSort={requestSort} className="w-[20%]" />
-            <th className="px-4 py-3 text-left w-full border-b border-[var(--color-border)]">
+            <SortableHeader label="Projet" sortKey="name" sortConfig={sortConfig} onSort={requestSort} className="w-auto whitespace-nowrap" />
+            <th className="px-4 py-3 text-left w-full max-w-0 border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Lien (URL)</span>
             </th>
             <SortableHeader label="Utilisateurs" sortKey="users" sortConfig={sortConfig} onSort={requestSort} className="w-36" />
