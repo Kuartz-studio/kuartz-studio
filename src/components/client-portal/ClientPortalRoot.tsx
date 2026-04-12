@@ -73,7 +73,14 @@ export function ClientPortalRoot({ project, customers, isAdmin, progressStats, t
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 relative">
-      {/* Admin return button removed */}
+      {isAdmin && (
+        <Link 
+          href={`/projects/${project.slug}`} 
+          className="absolute top-4 right-4 md:top-8 md:right-8 bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs px-4 py-2 rounded-full font-semibold tracking-wide border border-primary/20 flex items-center gap-2"
+        >
+          Retour à l'admin
+        </Link>
+      )}
       <div className="w-full max-w-3xl flex flex-col gap-12 items-center mt-12 md:mt-0">
         {/* Identification Screen Header */}
         <div className="flex flex-col items-center text-center gap-4">
