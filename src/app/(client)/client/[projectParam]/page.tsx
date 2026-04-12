@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { projects, projectToUser, users, tasks, taskAssignees, taskTags, tags as dbTags, comments, documents } from "@/db/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/lib/auth/session";
 import { ClientPortalRoot } from "@/components/client-portal/ClientPortalRoot";
@@ -69,7 +69,7 @@ export default async function ClientPortalPage({ params }: { params: Promise<{ p
       .map(({ id, name, avatarBase64, email }) => ({ id, name, avatarBase64, email }));
   }
 
-  const projectTasks = await db.select().from(tasks).where(eq(tasks.projectId, project.id)).orderBy(desc(tasks.issueNumber));
+  const projectTasks = await db.select().from(tasks).where(eq(tasks.projectId, project.id)).orderBy(asc(tasks.orderInProject), desc(tasks.issueNumber));
   const fetchedTaskIds = projectTasks.length > 0 ? projectTasks.map(t => t.id) : ["NONE"];
 
   const [allTaskAssignees, allTaskTags, allUsersRows, allTagsWithColor, allComments] = await Promise.all([

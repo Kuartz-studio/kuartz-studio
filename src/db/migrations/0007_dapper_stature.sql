@@ -1,0 +1,1 @@
+ALTER TABLE `task` ADD `order_in_project` integer DEFAULT 0 NOT NULL;

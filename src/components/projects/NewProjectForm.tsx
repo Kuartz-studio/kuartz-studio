@@ -237,11 +237,11 @@ export function NewProjectForm({ users }: { users: User[] }) {
           <input key={id} type="hidden" name="memberIds" value={id} />
         ))}
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
           {/* ============================================================ */}
-          {/* Project Details Card — Elegant style */}
+          {/* Project Details Card */}
           {/* ============================================================ */}
-          <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+          <div className="rounded-xl border bg-card overflow-hidden shadow-sm lg:w-1/3 shrink-0 lg:sticky lg:top-8">
             <div className="p-6 flex flex-col gap-5">
               {state?.error && (
                 <div className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md">
@@ -369,8 +369,8 @@ export function NewProjectForm({ users }: { users: User[] }) {
           {/* ============================================================ */}
           {/* Preset Tasks */}
           {/* ============================================================ */}
-          <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
-            <div className="p-5 flex items-center justify-between">
+          <div className="rounded-xl border bg-card overflow-hidden shadow-sm flex-1 lg:max-h-[calc(100vh-140px)] flex flex-col w-full min-h-[400px]">
+            <div className="p-5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
                   <ListChecks size={18} className="text-primary" />
@@ -384,7 +384,7 @@ export function NewProjectForm({ users }: { users: User[] }) {
             </div>
 
             {presetEnabled && (
-              <div className="border-t border-[var(--color-border)]">
+              <div className="border-t border-[var(--color-border)] flex-1 overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-[var(--color-muted)]">
@@ -449,26 +449,33 @@ export function NewProjectForm({ users }: { users: User[] }) {
                     ))}
                   </tbody>
                 </table>
-                <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] px-3 py-2">
-                  <span className="text-[11px] text-[var(--color-muted-foreground)]">
-                    {selectedCount} / {PRESET_TASKS.length} tâches sélectionnées
-                  </span>
-                </div>
+              </div>
+            )}
+            {presetEnabled && (
+              <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] px-3 py-3 shrink-0">
+                <span className="text-[11px] text-[var(--color-muted-foreground)]">
+                  {selectedCount} / {PRESET_TASKS.length} tâches sélectionnées
+                </span>
+              </div>
+            )}
+            {!presetEnabled && (
+              <div className="p-8 text-center text-muted-foreground bg-muted/20 flex-1 flex flex-col items-center justify-center">
+                Aucun preset sélectionné. Le projet sera créé vide de tâches.
               </div>
             )}
           </div>
+        </div>
 
-          {/* ============================================================ */}
-          {/* Actions */}
-          {/* ============================================================ */}
-          <div className="flex justify-end gap-3">
-            <Link href="/projects">
-              <Button variant="outline" type="button" disabled={isPending}>Annuler</Button>
-            </Link>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "Création..." : presetEnabled ? `Créer le projet + ${selectedCount} tâches` : "Créer le projet"}
-            </Button>
-          </div>
+        {/* ============================================================ */}
+        {/* Actions */}
+        {/* ============================================================ */}
+        <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border">
+          <Link href="/projects">
+            <Button variant="outline" type="button" disabled={isPending}>Annuler</Button>
+          </Link>
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Création..." : presetEnabled ? `Créer le projet + ${selectedCount} tâches` : "Créer le projet"}
+          </Button>
         </div>
       </form>
     </>

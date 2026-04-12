@@ -184,6 +184,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
                   allProjects={allProjects}
                   projectUserMap={projectUserMap}
                   currentUserId={currentUser?.id}
+                  enableReorder={isAdmin}
                 />
               ) : activeTab.startsWith("cat-") && activeSubTab ? (
                 <ClientDocumentRenderer document={documents.find((d: any) => d.id === activeSubTab)} />

@@ -178,3 +178,25 @@ export async function duplicateTaskAction(taskId: string) {
   return { success: true };
 }
 
+export async function updateTasksOrderAction(taskIds: string[]) {
+  const session = await verifySession();
+  if (!session || (session.role !== "admin" && session.role !== "employee")) {
+    return { error: "Non autorisé" };
+  }
+
+  try {
+    const promises = taskIds.map((id, i) => {
+      if (!id) return Promise.resolve();
+      return db.update(tasks)
+        .set({ orderInProject: i })
+        .where(eq(tasks.id, id));
+    });
+    await Promise.all(promises);
+    
+    revalidatePath("/tasks");
+    revalidatePath("/client/[projectParam]", "page");
+    return { success: true };
+  } catch (error) {
+    return { error: "Erreur lors de la mise à jour de l'ordre des tâches" };
+  }
+}

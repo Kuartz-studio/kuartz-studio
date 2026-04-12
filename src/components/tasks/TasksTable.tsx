@@ -5,8 +5,9 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Check, X, CalendarIcon, Plus, Trash2, CopyPlus, PenLine, ArrowUpDown, MoreHorizontal, Eye } from "lucide-react";
+import { Check, X, CalendarIcon, Plus, Trash2, CopyPlus, PenLine, ArrowUpDown, MoreHorizontal, Eye, GripVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Reorder } from "motion/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
@@ -15,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { StatusIcon, PriorityIcon, AvatarCustom } from "@/components/ui/table-icons";
-import { updateTaskAction, updateTaskAssigneesAction, updateTaskStatusAction, deleteTaskAction, duplicateTaskAction } from "@/actions/tasks";
+import { updateTaskAction, updateTaskAssigneesAction, updateTaskStatusAction, deleteTaskAction, duplicateTaskAction, updateTasksOrderAction } from "@/actions/tasks";
 import { createTagAction, deleteTagAction, updateTagColorAction, updateTaskTagsAction } from "@/actions/tags";
 import { ProjectTag } from "@/components/projects/ProjectTag";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -431,6 +432,7 @@ export function TasksTable({
   allProjects,
   projectUserMap,
   currentUserId,
+  enableReorder,
 }: { 
   tasks: EnrichedTask[]; 
   allTags: DbTag[];
@@ -438,6 +440,7 @@ export function TasksTable({
   allProjects: ProjectRecord[];
   projectUserMap: Record<string, string[]>;
   currentUserId?: string;
+  enableReorder?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [detailTask, setDetailTask] = useState<EnrichedTask | null>(null);
@@ -654,6 +657,18 @@ export function TasksTable({
     });
   }, [filteredTasks, sortConfig]);
 
+  const canReorder = enableReorder && !sortConfig && optimisticStatus === "active" && !optimisticAssignee;
+
+  const handleReorder = (reorderedTasks: EnrichedTask[]) => {
+    if (!canReorder) return;
+    setLocalTasks(reorderedTasks);
+    startTransition(async () => {
+      const taskIds = reorderedTasks.map(t => t.id);
+      const res = await updateTasksOrderAction(taskIds);
+      if (res?.error) toast.error(res.error);
+    });
+  };
+
   return (
     <>
       <div className="rounded-xl border bg-card overflow-hidden flex flex-col flex-1 min-h-0">
@@ -669,6 +684,7 @@ export function TasksTable({
             <table className="w-full text-sm">
             <thead className="sticky top-0 z-10">
               <tr>
+                {canReorder && <th className="px-2 py-3 bg-[var(--color-muted)] border-b border-[var(--color-border)] w-12 shrink-0"></th>}
                 <SortableHeader label="ID" sortKey="id" sortConfig={sortConfig} onSort={requestSort} className="px-4 py-3 text-left w-[1%]" />
                 <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-[10px] font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide w-[15%]">Projet</th>
                 <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-[10px] font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide w-auto">Titre</th>
@@ -680,19 +696,36 @@ export function TasksTable({
                 <th className="px-2 py-3 text-center bg-[var(--color-muted)] border-b border-[var(--color-border)] w-12"></th>
               </tr>
             </thead>
-            <tbody className={cn("transition-opacity", isPending && "opacity-70")}>
-              {sortedTasks.map((task) => {
-                const isMyTask = currentUserId ? task.assignees.some(a => a.user.id === currentUserId) : false;
-                const isDone = task.status === "DONE";
-                return (
-                  <tr key={task.id} onClick={() => openTask(task)} className={cn(
-                    "group border-b last:border-0 border-[var(--color-border)] transition-colors cursor-pointer",
-                    isDone ? "opacity-50" : "hover:bg-[var(--color-muted)]",
-                    isMyTask && !isDone && "bg-primary/5",
-                    isMyTask && isDone && "bg-primary/5 opacity-40"
-                  )}>
-                
-                    {/* ID */}
+            <Reorder.Group
+              as="tbody"
+              axis="y"
+                values={sortedTasks}
+                onReorder={handleReorder}
+                className={cn("transition-opacity", isPending && "opacity-70")}
+              >
+                {sortedTasks.map((task) => {
+                  const isMyTask = currentUserId ? task.assignees.some(a => a.user.id === currentUserId) : false;
+                  const isDone = task.status === "DONE";
+                  return (
+                    <Reorder.Item
+                      key={task.id}
+                      value={task}
+                      as="tr"
+                      dragListener={canReorder}
+                      onClick={() => openTask(task)}
+                      className={cn(
+                        "group border-b last:border-0 border-[var(--color-border)] transition-colors cursor-pointer relative bg-card",
+                        isDone ? "opacity-50" : "hover:bg-[var(--color-muted)]",
+                        isMyTask && !isDone && "bg-primary/5",
+                        isMyTask && isDone && "bg-primary/5 opacity-40"
+                      )}
+                    >
+                      {/* Drag handle */}
+                      <td className="px-2 py-2.5 cursor-grab active:cursor-grabbing text-center">
+                        <GripVertical className="h-4 w-4 text-muted-foreground opacity-30 hover:opacity-100 transition-opacity mx-auto" />
+                      </td>
+                      
+                      {/* ID */}
                     <td className="px-4 py-2.5">
                       <span className="text-[12px] font-mono text-[var(--color-muted-foreground)] select-none">
                         #{task.issueNumber}
@@ -781,11 +814,11 @@ export function TasksTable({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </Reorder.Item>
+                  );
+                })}
+              </Reorder.Group>
+            </table>
         </div>
         )}
         
