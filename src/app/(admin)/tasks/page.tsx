@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { tasks, projects, users, taskAssignees, taskTags, tags as dbTags, projectToUser } from "@/db/schema";
-import { desc, eq, like, or, and, inArray } from "drizzle-orm";
+import { desc, eq, like, or, and, inArray, notInArray } from "drizzle-orm";
 import { TasksTable } from "@/components/tasks/TasksTable";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
@@ -17,6 +17,7 @@ export default async function GlobalTasksPage({
   const assignee = params.assignee as string | undefined;
   const priority = params.priority as string | undefined;
   const tag = params.tag as string | undefined;
+  const status = params.status as string | undefined;
 
   const session = await verifySession();
 
@@ -36,6 +37,14 @@ export default async function GlobalTasksPage({
   
   if (priority) {
     conditions.push(eq(tasks.priority, Number(priority)));
+  }
+
+  if (status) {
+    if (status === "active") {
+      conditions.push(notInArray(tasks.status, ["DONE", "CANCELED"]));
+    } else if (status !== "all") {
+      conditions.push(eq(tasks.status, status as any));
+    }
   }
 
   if (q) {

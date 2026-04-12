@@ -43,8 +43,9 @@ export function TaskFilters({
   const currentPriority = searchParams.get("priority");
   const currentAssignee = searchParams.get("assignee");
   const currentTag = searchParams.get("tag");
+  const currentStatus = searchParams.get("status");
 
-  const hasFilters = currentProject || currentPriority || currentAssignee || currentTag || searchParams.get("q");
+  const hasFilters = currentProject || currentPriority || currentAssignee || currentTag || currentStatus || searchParams.get("q");
 
   return (
     <div className="flex flex-col xl:flex-row gap-4 max-w-full overflow-x-auto pb-1">
@@ -81,6 +82,22 @@ export function TaskFilters({
             {users.map(u => (
               <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={currentStatus || ""} onValueChange={(val) => setFilter("status", val)}>
+          <SelectTrigger className="w-[130px] bg-background h-9">
+            <div className="flex items-center gap-2 truncate"><Filter size={13}/> Statut</div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous</SelectItem>
+            <SelectItem value="active">Actives</SelectItem>
+            <SelectItem value="BACKLOG">Backlog</SelectItem>
+            <SelectItem value="TODO">À faire</SelectItem>
+            <SelectItem value="IN_PROGRESS">En cours</SelectItem>
+            <SelectItem value="PAUSED">En pause</SelectItem>
+            <SelectItem value="DONE">Terminé</SelectItem>
+            <SelectItem value="CANCELED">Annulé</SelectItem>
           </SelectContent>
         </Select>
 

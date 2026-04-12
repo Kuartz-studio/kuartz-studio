@@ -4,6 +4,7 @@ import { useState, useMemo, useTransition, useEffect } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Check, X, CalendarIcon, Plus, Trash2, CopyPlus, PenLine, ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -440,22 +441,29 @@ export function TasksTable({
 
   // === OPTIMISTIC STATE ===
   const [localTasks, setLocalTasks] = useState(serverTasks);
-  const [showDone, setShowDone] = useState(true);
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("kuartz-tasks-show-done");
-      if (stored !== null) {
-        setShowDone(stored === "true");
-      }
-    } catch (e) {}
-  }, []);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const currentStatus = searchParams.get("status") || "all";
+  const showDoneCheckbox = currentStatus !== "active";
 
   const handleShowDoneChange = (val: boolean) => {
-    setShowDone(val);
-    try {
-      localStorage.setItem("kuartz-tasks-show-done", val.toString());
-    } catch (e) {}
+    const params = new URLSearchParams(searchParams.toString());
+    if (val) params.delete("status");
+    else params.set("status", "active");
+    router.push(pathname + "?" + params.toString());
+  };
+
+  const currentAssignee = searchParams.get("assignee");
+  const myTasksChecked = currentAssignee === currentUserId;
+
+  const handleMyTasksChange = (val: boolean) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (val && currentUserId) params.set("assignee", currentUserId);
+    else params.delete("assignee");
+    router.push(pathname + "?" + params.toString());
   };
 
   useEffect(() => {
@@ -557,13 +565,9 @@ export function TasksTable({
     setSortConfig({ key, direction });
   };
 
-  const filteredTasks = useMemo(() => {
-    return localTasks.filter(t => showDone ? true : t.status !== "DONE");
-  }, [localTasks, showDone]);
-
   const sortedTasks = useMemo(() => {
-    if (!sortConfig) return filteredTasks;
-    return [...filteredTasks].sort((a, b) => {
+    if (!sortConfig) return localTasks;
+    return [...localTasks].sort((a, b) => {
       let valA: any, valB: any;
       switch (sortConfig.key) {
         case "id":
@@ -584,9 +588,9 @@ export function TasksTable({
       if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     });
-  }, [filteredTasks, sortConfig]);
+  }, [localTasks, sortConfig]);
 
-  if (filteredTasks.length === 0) {
+  if (localTasks.length === 0) {
     return (
       <div className="text-center p-8 bg-card rounded-xl border flex flex-col items-center justify-center gap-3">
         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -720,9 +724,17 @@ export function TasksTable({
         </div>
         
         {/* Footer actions */}
-        <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] p-3 px-4 flex justify-end">
+        <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] p-3 px-4 flex justify-end gap-6">
+          {currentUserId && (
+            <div className="flex items-center gap-2">
+              <Switch id="my-tasks" checked={myTasksChecked} onCheckedChange={handleMyTasksChange} />
+              <label htmlFor="my-tasks" className="text-[12px] font-medium text-[var(--color-muted-foreground)] cursor-pointer select-none">
+                Uniquement mes tâches
+              </label>
+            </div>
+          )}
           <div className="flex items-center gap-2">
-            <Switch id="show-done" checked={showDone} onCheckedChange={handleShowDoneChange} />
+            <Switch id="show-done" checked={showDoneCheckbox} onCheckedChange={handleShowDoneChange} />
             <label htmlFor="show-done" className="text-[12px] font-medium text-[var(--color-muted-foreground)] cursor-pointer select-none">
               Afficher les tâches terminées
             </label>
