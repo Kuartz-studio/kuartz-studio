@@ -1,12 +1,13 @@
 import { verifySession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
-import { LogOut, FolderKanban, CheckSquare, Users, FileText, Activity, Book } from "lucide-react";
+import { LogOut, Activity, Book } from "lucide-react";
 import { logoutAction } from "@/actions/auth";
 import { getMyNotifications, getUnreadCount } from "@/actions/notifications";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { KuartzIcon } from "@/components/icons";
+import { TaskIcon, ProjectIcon, UserIcon, DocumentsIcon } from "@/components/ui/table-icons";
 
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -46,13 +47,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <SidebarNav
           groups={[
             [
-              { path: "/tasks", label: "Tâches", icon: <CheckSquare size={18} /> },
-              { path: "/projects", label: "Projets", icon: <FolderKanban size={18} /> },
-              { path: "/users", label: "Utilisateurs", icon: <Users size={18} /> },
+              { path: "/tasks", label: "Tâches", icon: <TaskIcon size={18} /> },
+              { path: "/projects", label: "Projets", icon: <ProjectIcon size={18} /> },
+              { path: "/users", label: "Utilisateurs", icon: <UserIcon size={18} /> },
             ],
             [
               { path: "/documentation", label: "Documentation", icon: <Book size={18} /> },
-              { path: "/documents", label: "Fichiers & Liens", icon: <FileText size={18} /> },
+              { path: "/documents", label: "Fichiers & Liens", icon: <DocumentsIcon size={18} /> },
               { path: "/activity", label: "Activité", icon: <Activity size={18} /> },
             ],
           ]}
