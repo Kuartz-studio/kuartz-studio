@@ -614,22 +614,19 @@ export function TasksTable({
     });
   }, [filteredTasks, sortConfig]);
 
-  if (filteredTasks.length === 0) {
-    return (
-      <div className="text-center p-8 bg-card rounded-xl border flex flex-col items-center justify-center gap-3">
-        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-          <Check className="h-6 w-6 text-muted-foreground" />
-        </div>
-        <p className="text-muted-foreground">Aucune tâche trouvée.</p>
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="rounded-xl border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        {filteredTasks.length === 0 ? (
+          <div className="text-center p-8 bg-card flex flex-col items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+              <Check className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground">Aucune tâche trouvée.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr>
                 <SortableHeader label="ID" sortKey="id" sortConfig={sortConfig} onSort={requestSort} className="px-4 py-3 text-left w-[1%]" />
@@ -746,6 +743,7 @@ export function TasksTable({
             </tbody>
           </table>
         </div>
+        )}
         
         {/* Footer actions */}
         <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] p-3 px-4 flex justify-end gap-6">
