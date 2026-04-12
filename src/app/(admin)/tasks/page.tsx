@@ -121,13 +121,13 @@ export default async function GlobalTasksPage({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 flex-1 min-h-0">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Tâches</h1>
           <p className="text-muted-foreground">Vue globale de toutes les tâches du studio.</p>
         </div>
-        <NewTaskDialog projects={allProjects} users={usersForDropdown} projectUserMap={projectUserMap} />
+        <NewTaskDialog projects={allProjects} users={usersForDropdown} projectUserMap={projectUserMap} allTags={allTagsWithColor} />
       </div>
 
       <div className="bg-card p-4 rounded-xl border flex flex-col gap-4">

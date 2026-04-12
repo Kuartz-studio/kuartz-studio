@@ -20,7 +20,7 @@ export default async function ProjectsListPage() {
   const usersForTable = allUsers.map(u => ({ id: u.id, name: u.name, avatarBase64: u.avatarBase64, role: u.role }));
 
   return (
-    <div className="flex flex-col gap-8 flex-1">
+    <div className="flex flex-col gap-8 flex-1 min-h-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Projets</h1>

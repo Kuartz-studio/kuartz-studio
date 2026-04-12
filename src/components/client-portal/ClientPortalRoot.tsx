@@ -58,7 +58,7 @@ export function ClientPortalRoot({ project, customers, isAdmin, progressStats, t
     return (
       <ClientDashboard
         project={project}
-        currentUser={selectedCustomer || (isAdmin ? { name: "Admin", avatarBase64: null, id: adminId || "admin", email: "" } : null)}
+        currentUser={selectedCustomer || (isAdmin ? (allUsers.find(u => u.id === adminId) || { name: "Admin", avatarBase64: null, id: adminId || "admin", email: "" }) : null)}
         isAdmin={isAdmin}
         tasks={tasks}
         documents={documents}

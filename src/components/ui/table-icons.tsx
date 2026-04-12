@@ -158,3 +158,11 @@ export function DocumentsIcon({ size = 16, className = "" }: { size?: number, cl
     </svg>
   );
 }
+
+export function WebflowIcon({ size = 16, className = "" }: { size?: number, className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 1080 674" fill="currentColor" stroke="none" className={className} role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <path fillRule="evenodd" clipRule="evenodd" d="M1080 0L735.385 673.684H411.695L555.915 394.481H549.444C430.463 548.934 252.941 650.61 -0.000976562 673.684V398.344C-0.000976562 398.344 161.812 388.787 256.938 288.776H-0.000976562V0.0053214H288.77V237.515L295.252 237.489L413.254 0.0053214H631.644V236.009L638.125 235.999L760.555 0H1080Z" />
+    </svg>
+  );
+}

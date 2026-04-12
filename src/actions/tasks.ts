@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { tasks, projects, taskAssignees } from "@/db/schema";
+import { tasks, projects, taskAssignees, taskTags } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { verifySession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
@@ -32,6 +32,7 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
   
   const assignees = formData.getAll("assignees") as string[];
+  const tagIds = formData.getAll("tags") as string[];
 
   try {
     const [project] = await db.select().from(projects).where(eq(projects.id, parsed.data.projectId)).limit(1);
@@ -64,6 +65,12 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
     if (newTask && assignees.length > 0) {
       await db.insert(taskAssignees).values(
         assignees.map((userId) => ({ taskId: newTask.id, userId }))
+      );
+    }
+
+    if (newTask && tagIds.length > 0) {
+      await db.insert(taskTags).values(
+        tagIds.map((tagId) => ({ taskId: newTask.id, tagId }))
       );
     }
 
@@ -104,7 +111,7 @@ export async function updateTaskStatusAction(taskId: string, status: "BACKLOG"|"
   revalidatePath(`/projects/[slug]`, 'page');
 }
 
-export async function updateTaskAction(taskId: string, payload: { title?: string; priority?: number; targetDate?: Date | null }) {
+export async function updateTaskAction(taskId: string, payload: { title?: string; description?: string; priority?: number; targetDate?: Date | null }) {
   const session = await verifySession();
   if (!session || (session.role !== "admin" && session.role !== "employee")) {
     return { error: "Non autorisé" };

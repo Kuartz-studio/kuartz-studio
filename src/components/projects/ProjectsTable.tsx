@@ -361,9 +361,10 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
   }, [localProjects, sortConfig]);
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-card)] flex flex-col">
+    <div className="rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-card)] flex flex-col flex-1 min-h-0">
+      <div className="overflow-auto flex-1">
       <table className="text-sm border-collapse w-full relative">
-        <thead className="bg-[var(--color-muted)]">
+        <thead className="bg-[var(--color-muted)] sticky top-0 z-10">
           <tr>
             <th className="px-4 py-3 text-left w-16 whitespace-nowrap border-b border-[var(--color-border)]">
               <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Logo</span>
@@ -479,6 +480,7 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
           )})}
         </tbody>
       </table>
+      </div>
 
       {/* Slide-over Settings */}
       <Sheet open={!!settingsProject} onOpenChange={(val: boolean) => !val && setSettingsProject(null)}>

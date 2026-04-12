@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, FileText, Link as LinkIcon, Settings, Globe, Layers, Palette, PenTool, Type } from "lucide-react";
+import { FileText, Link as LinkIcon, Settings, Globe, Layers, Palette, PenTool, Type } from "lucide-react";
+import { TaskIcon, DocumentsIcon, WebflowIcon } from "@/components/ui/table-icons";
 import { FramerIcon } from "@/components/icons";
 import { ClientSidebar } from "./ClientSidebar";
 import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
 import { TasksTable } from "@/components/tasks/TasksTable";
+import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { ClientDocumentRenderer } from "./ClientDocumentRenderer";
 
 type Props = {
@@ -41,7 +43,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
     navItems.push({
       id: "tasks",
       label: "Tâches",
-      icon: <CheckSquare size={18} />,
+      icon: <TaskIcon size={18} />,
       isActive: activeTab === "tasks",
       onClick: () => {
         setActiveTab("tasks");
@@ -63,7 +65,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
 
       let IconComponent: any = Settings;
       if (cat === "Framer") IconComponent = FramerIcon;
-      else if (cat === "Webflow") IconComponent = Globe;
+      else if (cat === "Webflow") IconComponent = WebflowIcon;
       else if (cat === "Figma") IconComponent = Layers;
       else if (cat === "Branding") IconComponent = Palette;
       else if (cat === "Design") IconComponent = PenTool;
@@ -100,7 +102,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
     navItems.push({
       id: "raw-docs",
       label: "Documents",
-      icon: <FileText size={18} />,
+      icon: <DocumentsIcon size={18} />,
       isActive: activeTab === "raw-docs",
       subItems,
     });
@@ -145,6 +147,14 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
                     Mode Admin
                  </Link>
                )}
+               {activeTab === "tasks" && (
+                  <NewTaskDialog 
+                    projectId={project.id} 
+                    users={allUsers} 
+                    projectUserMap={projectUserMap}
+                    allTags={allTags}
+                  />
+                )}
                <div className="w-8 h-8 rounded-full overflow-hidden border bg-muted flex items-center justify-center">
                  {currentUser?.avatarBase64 ? (
                    <img src={currentUser.avatarBase64} alt={currentUser.name} className="w-full h-full object-cover" />
@@ -173,6 +183,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
                   allUsers={allUsers}
                   allProjects={allProjects}
                   projectUserMap={projectUserMap}
+                  currentUserId={currentUser?.id}
                 />
               ) : activeTab.startsWith("cat-") && activeSubTab ? (
                 <ClientDocumentRenderer document={documents.find((d: any) => d.id === activeSubTab)} />

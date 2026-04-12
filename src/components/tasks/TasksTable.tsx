@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Check, X, CalendarIcon, Plus, Trash2, CopyPlus, PenLine, ArrowUpDown, MoreHorizontal } from "lucide-react";
+import { Check, X, CalendarIcon, Plus, Trash2, CopyPlus, PenLine, ArrowUpDown, MoreHorizontal, Eye } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -18,6 +18,7 @@ import { StatusIcon, PriorityIcon, AvatarCustom } from "@/components/ui/table-ic
 import { updateTaskAction, updateTaskAssigneesAction, updateTaskStatusAction, deleteTaskAction, duplicateTaskAction } from "@/actions/tasks";
 import { createTagAction, deleteTagAction, updateTagColorAction, updateTaskTagsAction } from "@/actions/tags";
 import { ProjectTag } from "@/components/projects/ProjectTag";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 // Types
 export interface DbTag { id: string; name: string; color: string | null; projectId: string | null; }
@@ -102,13 +103,14 @@ function EditableTitle({ value, onSave }: { value: string; onSave: (v: string) =
   );
 }
 
-function StatusCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+function StatusCell({ value, onSave, showLabel }: { value: string; onSave: (v: string) => void; showLabel?: boolean }) {
   const [open, setOpen] = useState(false);
   const status = getStatus(value);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger className="inline-flex items-center justify-center p-1.5 text-[11px] font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors rounded hover:bg-[var(--color-muted)]" title={status.label} onClick={(e) => e.stopPropagation()}>
         <StatusIcon value={value} />
+        {showLabel && <span className="ml-2 font-medium" style={{ color: status.color }}>{status.label}</span>}
       </PopoverTrigger>
       <PopoverContent className="w-[180px] p-0" align="start" onClick={(e) => e.stopPropagation()}>
         <Command>
@@ -129,13 +131,14 @@ function StatusCell({ value, onSave }: { value: string; onSave: (v: string) => v
   );
 }
 
-function PriorityCell({ value, onSave }: { value: number; onSave: (v: number) => void }) {
+function PriorityCell({ value, onSave, showLabel }: { value: number; onSave: (v: number) => void; showLabel?: boolean }) {
   const [open, setOpen] = useState(false);
   const prio = getPriority(value);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger className="inline-flex items-center justify-center p-1.5 text-[11px] font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors rounded hover:bg-[var(--color-muted)]" title={prio.label} onClick={(e) => e.stopPropagation()}>
         <PriorityIcon value={value} />
+        {showLabel && <span className="ml-2 font-medium" style={{ color: prio.color }}>{prio.label}</span>}
       </PopoverTrigger>
       <PopoverContent className="w-[170px] p-0" align="start" onClick={(e) => e.stopPropagation()}>
         <Command>
@@ -482,6 +485,32 @@ export function TasksTable({
     setLocalTasks(serverTasks);
   }, [serverTasks.length]);
 
+  // --- URL sync for task detail sidebar ---
+  const openTask = (task: EnrichedTask) => {
+    setDetailTask(task);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("task", task.id);
+    window.history.replaceState(null, "", pathname + "?" + params.toString());
+  };
+
+  const closeTask = () => {
+    setDetailTask(null);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("task");
+    const qs = params.toString();
+    window.history.replaceState(null, "", pathname + (qs ? "?" + qs : ""));
+  };
+
+  // Auto-open task from URL on mount
+  useEffect(() => {
+    const taskParam = searchParams.get("task");
+    if (taskParam && !detailTask) {
+      const found = localTasks.find(t => t.id === taskParam);
+      if (found) setDetailTask(found);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const optimisticUpdateTask = (taskId: string, patch: Partial<EnrichedTask>) => {
     setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...patch } : t));
   };
@@ -493,6 +522,17 @@ export function TasksTable({
       const res = await updateTaskAction(taskId, { title });
       if (res?.error) { setLocalTasks(previous); toast.error(res.error); }
       else toast.success("Sauvegardé");
+    });
+  };
+
+  const handleUpdateDescription = (taskId: string, description: string) => {
+    const previous = localTasks;
+    optimisticUpdateTask(taskId, { description });
+    // Also update detailTask in-place so sidebar stays in sync
+    setDetailTask(prev => prev && prev.id === taskId ? { ...prev, description } : prev);
+    startTransition(async () => {
+      const res = await updateTaskAction(taskId, { description });
+      if (res?.error) { setLocalTasks(previous); toast.error(res.error); }
     });
   };
 
@@ -616,7 +656,7 @@ export function TasksTable({
 
   return (
     <>
-      <div className="rounded-xl border bg-card overflow-hidden">
+      <div className="rounded-xl border bg-card overflow-hidden flex flex-col flex-1 min-h-0">
         {filteredTasks.length === 0 ? (
           <div className="text-center p-8 bg-card flex flex-col items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -625,9 +665,9 @@ export function TasksTable({
             <p className="text-muted-foreground">Aucune tâche trouvée.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto flex-1">
             <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr>
                 <SortableHeader label="ID" sortKey="id" sortConfig={sortConfig} onSort={requestSort} className="px-4 py-3 text-left w-[1%]" />
                 <th className="px-4 py-3 text-left bg-[var(--color-muted)] border-b border-[var(--color-border)] text-[10px] font-medium text-[var(--color-muted-foreground)] uppercase tracking-wide w-[15%]">Projet</th>
@@ -722,7 +762,11 @@ export function TasksTable({
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-[160px]">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDetailTask(task); }} className="cursor-pointer">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openTask(task); }} className="cursor-pointer">
+                            <Eye className="h-4 w-4 mr-2" />
+                            Voir
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openTask(task); }} className="cursor-pointer">
                             <PenLine className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
@@ -765,7 +809,7 @@ export function TasksTable({
       </div>
 
       {/* Task Detail Sidebar */}
-      <Sheet open={!!detailTask} onOpenChange={(val) => !val && setDetailTask(null)}>
+      <Sheet open={!!detailTask} onOpenChange={(val) => !val && closeTask()}>
         <SheetContent className="w-[75%] sm:w-[75%] sm:max-w-[720px] !max-w-[720px] overflow-y-auto overflow-x-hidden px-8 py-8" side="right">
           <SheetHeader className="sr-only">
             <SheetTitle>Détail de la tâche : {detailTask?.title}</SheetTitle>
@@ -773,40 +817,31 @@ export function TasksTable({
           </SheetHeader>
 
           {detailTask && (
-            <div className="flex flex-col gap-6 pb-12">
+            <div className="flex flex-col gap-4 pb-8">
+              {/* Header: ID + Project + Title */}
               <div>
                 <span className="text-xs font-mono text-[var(--color-muted-foreground)]">#{detailTask.issueNumber} · {detailTask.projectName}</span>
-                <h2 className="text-xl font-bold mt-1">{detailTask.title}</h2>
-                {detailTask.description && (
-                  <p className="text-sm text-[var(--color-muted-foreground)] mt-2 leading-relaxed whitespace-pre-wrap">{detailTask.description}</p>
-                )}
+                <h2 className="text-lg font-bold mt-0.5 leading-snug">{detailTask.title}</h2>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Statut</span>
-                <StatusCell value={detailTask.status} onSave={(v) => handleUpdateStatus(detailTask.id, v)} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Priorité</span>
-                  <PriorityCell value={detailTask.priority} onSave={(v) => handleUpdatePriority(detailTask.id, v)} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Échéance</span>
-                  <DateCell value={detailTask.targetDate} status={detailTask.status} onSave={(v) => handleUpdateDate(detailTask.id, v)} />
-                </div>
-              </div>
+              {/* Metadata grid: compact 2-col key-value pairs */}
+              <div className="grid grid-cols-[auto_auto] gap-x-6 gap-y-2 items-center justify-start text-sm border rounded-lg p-3 bg-[var(--color-muted)]/30">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Statut</span>
+                <StatusCell value={detailTask.status} onSave={(v) => handleUpdateStatus(detailTask.id, v)} showLabel={true} />
 
-              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Priorité</span>
+                <PriorityCell value={detailTask.priority} onSave={(v) => handleUpdatePriority(detailTask.id, v)} showLabel={true} />
+
+                <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Échéance</span>
+                <DateCell value={detailTask.targetDate} status={detailTask.status} onSave={(v) => handleUpdateDate(detailTask.id, v)} />
+
                 <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Assignés</span>
                 <AssigneeCell
                   assignees={detailTask.assignees}
                   allUsers={projectUserMap ? allUsers.filter(u => u.role === "admin" || (projectUserMap[detailTask.projectId] ?? []).includes(u.id)) : allUsers}
                   onSave={(userIds) => handleUpdateAssignees(detailTask.id, userIds)}
                 />
-              </div>
 
-              <div className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Tags</span>
                 <TagsCell
                   tags={detailTask.tags}
@@ -818,6 +853,19 @@ export function TasksTable({
                   }}
                   onDeleteTag={(tagId) => startTransition(() => { deleteTagAction(tagId) })}
                   onUpdateTagColor={(tagId, color) => startTransition(() => { updateTagColorAction(tagId, color) })}
+                />
+              </div>
+
+              {/* Description: editable rich text */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="px-3 py-1.5 bg-[var(--color-muted)]/50 border-b">
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Description</span>
+                </div>
+                <RichTextEditor
+                  content={detailTask.description || ""}
+                  onChange={(html) => handleUpdateDescription(detailTask.id, html)}
+                  placeholder="Ajoutez une description..."
+                  className="border-0 rounded-none shadow-none"
                 />
               </div>
             </div>

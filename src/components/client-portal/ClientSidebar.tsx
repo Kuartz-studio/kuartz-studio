@@ -59,7 +59,7 @@ export function ClientSidebar({ projectName, projectSlug, logoBase64, items }: P
               }}
               className={`
                 flex items-center justify-between w-full p-2 rounded-md text-sm font-medium transition-colors
-                ${item.isActive || openMenus[item.id] 
+                ${item.isActive 
                   ? "bg-accent text-accent-foreground" 
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}
               `}

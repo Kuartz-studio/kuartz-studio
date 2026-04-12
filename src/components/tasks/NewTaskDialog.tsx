@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Check, ChevronsUpDown, FolderKanban, CalendarIcon, X } from "lucide-react";
+import { Plus, Check, ChevronsUpDown, FolderKanban, CalendarIcon, X, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -37,23 +37,28 @@ const PRIORITY_OPTIONS = [
 
 type Project = { id: string; name: string; slug: string; logoBase64?: string | null };
 type UserMin = { id: string; name: string; email: string; avatarBase64: string | null; role: string };
+type TagRecord = { id: string; name: string; color: string | null; projectId: string | null };
 
 export function NewTaskDialog({
   projectId,
   projects,
   users,
   projectUserMap,
+  allTags = [],
 }: {
   projectId?: string;
   projects?: Project[];
   users?: UserMin[];
   projectUserMap?: Record<string, string[]>;
+  allTags?: TagRecord[];
 }) {
   const [state, action, isPending] = useActionState(createTaskAction, {});
   const [open, setOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId ?? "");
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [targetDate, setTargetDate] = useState<Date | undefined>(undefined);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
   
@@ -254,6 +259,63 @@ export function NewTaskDialog({
                             {p.value === priority.toString() && <Check className="ml-auto h-3.5 w-3.5" />}
                           </CommandItem>
                         ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {selectedTags.map(id => (
+                <input key={id} type="hidden" name="tags" value={id} />
+              ))}
+              <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+                <PopoverTrigger 
+                  disabled={!selectedProjectId}
+                  className={cn(
+                    "flex h-10 w-auto min-w-[40px] items-center justify-start rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted shadow-sm",
+                    !selectedTags.length && "text-muted-foreground"
+                  )}
+                >
+                  {selectedTags.length > 0 ? (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {selectedTags.slice(0, 3).map(id => {
+                        const t = allTags.find(tag => tag.id === id);
+                        if (!t) return null;
+                        return (
+                          <span key={t.id} className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium border whitespace-nowrap" style={{ backgroundColor: t.color ? `${t.color}22` : '#8888ff22', color: t.color ?? '#8888ff', borderColor: t.color ? `${t.color}44` : '#8888ff44' }}>
+                            {t.name}
+                          </span>
+                        );
+                      })}
+                      {selectedTags.length > 3 && <span className="text-[9px] font-bold text-muted-foreground">+{selectedTags.length - 3}</span>}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground whitespace-nowrap px-1 flex items-center gap-1"><Tag size={14} className="opacity-50" /> Tags...</span>
+                  )}
+                </PopoverTrigger>
+                <PopoverContent className="w-[220px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Chercher un tag..." />
+                    <CommandList>
+                      <CommandEmpty>Aucun tag.</CommandEmpty>
+                      <CommandGroup>
+                        {allTags.map(tag => {
+                          const isSelected = selectedTags.includes(tag.id);
+                          const bg = tag.color ? `${tag.color}22` : '#8888ff22';
+                          const text = tag.color ?? '#8888ff';
+                          return (
+                            <CommandItem key={tag.id} onSelect={() => {
+                              setSelectedTags(prev => isSelected ? prev.filter(id => id !== tag.id) : [...prev, tag.id]);
+                            }}>
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: bg, color: text }}>
+                                {tag.name}
+                              </span>
+                              {isSelected && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-primary" />}
+                            </CommandItem>
+                          );
+                        })}
                       </CommandGroup>
                     </CommandList>
                   </Command>
