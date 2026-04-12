@@ -126,8 +126,8 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
         items={navItems}
       />
       
-      <main className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-5xl mx-auto flex flex-col gap-6">
+      <main className="flex-1 flex flex-col min-h-0 p-8">
+        <div className="max-w-5xl mx-auto flex flex-col flex-1 min-h-0 gap-6 w-full">
           <header className="flex items-center justify-between border-b pb-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
@@ -174,7 +174,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
               transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-              className="flex flex-col gap-6"
+              className="flex flex-col flex-1 min-h-0 gap-6"
             >
               {activeTab === "tasks" && !activeSubTab ? (
                 <TasksTable 
