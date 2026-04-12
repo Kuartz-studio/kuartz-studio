@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, FileText, CheckSquare, Settings, Link as Lin
 import Link from "next/link";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { KuartzIcon } from "@/components/icons";
 
 type NavItem = {
   id: string;
@@ -111,10 +112,15 @@ export function ClientSidebar({ projectName, projectSlug, logoBase64, items }: P
           href={`https://kuartz.studio?utm_source=portal&utm_medium=referral&utm_campaign=${projectSlug}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-muted-foreground hover:text-primary transition-colors flex flex-col gap-0.5"
+          className="flex flex-row items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors group"
         >
-          <span>Propulsé par</span>
-          <span className="font-semibold text-foreground">Kuartz Studio</span>
+          <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center shrink-0 group-hover:bg-primary transition-colors overflow-hidden">
+            <KuartzIcon className="w-5 h-5 text-background" />
+          </div>
+          <div className="flex flex-col gap-0 text-[11px] leading-tight">
+            <span>Propulsé par</span>
+            <span className="font-bold text-foreground text-[13px]">Kuartz Studio</span>
+          </div>
         </a>
       </div>
     </aside>
