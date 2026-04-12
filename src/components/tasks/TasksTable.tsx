@@ -657,13 +657,26 @@ export function TasksTable({
     });
   }, [filteredTasks, sortConfig]);
 
-  const canReorder = enableReorder && !sortConfig && optimisticStatus === "active" && !optimisticAssignee;
+  const canReorder = enableReorder && !sortConfig && !optimisticAssignee;
 
   const handleReorder = (reorderedTasks: EnrichedTask[]) => {
     if (!canReorder) return;
-    setLocalTasks(reorderedTasks);
+    
+    let newLocalTasks: EnrichedTask[];
+    if (reorderedTasks.length === localTasks.length) {
+      newLocalTasks = reorderedTasks;
+    } else {
+      newLocalTasks = [...localTasks];
+      const indices = reorderedTasks.map(t => localTasks.findIndex(p => p.id === t.id)).sort((a,b) => a-b);
+      indices.forEach((idx, i) => {
+        const item = reorderedTasks[i];
+        if (idx !== -1 && item) newLocalTasks[idx] = item;
+      });
+    }
+
+    setLocalTasks(newLocalTasks);
     startTransition(async () => {
-      const taskIds = reorderedTasks.map(t => t.id);
+      const taskIds = newLocalTasks.map(t => t.id);
       const res = await updateTasksOrderAction(taskIds);
       if (res?.error) toast.error(res.error);
     });
