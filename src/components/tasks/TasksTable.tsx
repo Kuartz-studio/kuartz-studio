@@ -443,6 +443,22 @@ export function TasksTable({
   const [showDone, setShowDone] = useState(true);
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem("kuartz-tasks-show-done");
+      if (stored !== null) {
+        setShowDone(stored === "true");
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleShowDoneChange = (val: boolean) => {
+    setShowDone(val);
+    try {
+      localStorage.setItem("kuartz-tasks-show-done", val.toString());
+    } catch (e) {}
+  };
+
+  useEffect(() => {
     setLocalTasks(serverTasks);
   }, [serverTasks.length]);
 
@@ -706,7 +722,7 @@ export function TasksTable({
         {/* Footer actions */}
         <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] p-3 px-4 flex justify-end">
           <div className="flex items-center gap-2">
-            <Switch id="show-done" checked={showDone} onCheckedChange={setShowDone} />
+            <Switch id="show-done" checked={showDone} onCheckedChange={handleShowDoneChange} />
             <label htmlFor="show-done" className="text-[12px] font-medium text-[var(--color-muted-foreground)] cursor-pointer select-none">
               Afficher les tâches terminées
             </label>
