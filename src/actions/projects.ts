@@ -22,7 +22,8 @@ export async function createProjectAction(prevState: ActionState, formData: Form
   const parsed = insertProjectSchema.safeParse(data);
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
 
-  const { name, slug, description } = parsed.data;
+  const { name, description } = parsed.data;
+  const slug = parsed.data.slug || name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
   try {
     const existing = await db.select().from(projects).where(eq(projects.slug, slug)).limit(1);
@@ -63,17 +64,28 @@ export async function createProjectWithPresetAction(
   const parsed = insertProjectSchema.safeParse(data);
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
 
-  const { name, slug, description } = parsed.data;
+  const { name, description } = parsed.data;
+  // Auto-generate slug from name
+  let slug = name
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  
   const presetTasksJson = formData.get("presetTasks") as string | null;
   const logoBase64 = formData.get("logoBase64") as string | null;
   const memberIds = formData.getAll("memberIds") as string[];
+  const url = (formData.get("url") as string | null) || null;
 
   try {
+    // Ensure slug uniqueness
     const existing = await db.select().from(projects).where(eq(projects.slug, slug)).limit(1);
-    if (existing.length > 0) return { error: "Ce slug (URL) est déjà utilisé par un autre projet." };
+    if (existing.length > 0) {
+      slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    }
 
     const [project] = await db.insert(projects).values({
-      name, slug, description,
+      name, slug, description, url,
       logoBase64: logoBase64 || null,
     }).returning();
     if (!project) return { error: "Erreur serveur lors de la création du projet" };

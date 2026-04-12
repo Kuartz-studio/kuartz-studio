@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { compressImage } from "@/lib/image";
 import Link from "next/link";
-import { ArrowLeft, ListChecks, Check, ImagePlus, Loader2 } from "lucide-react";
+import { ArrowLeft, ListChecks, Check, ImagePlus, Loader2, Link2 } from "lucide-react";
 import { AvatarCustom } from "@/components/ui/table-icons";
 
 type User = { id: string; name: string; role: string; avatarBase64: string | null };
@@ -249,8 +249,8 @@ export function NewProjectForm({ users }: { users: User[] }) {
                 </div>
               )}
 
-              {/* Row 1: Logo + Slug */}
-              <div className="flex items-center gap-4">
+              {/* Row 1: Logo + Nom du projet */}
+              <div className="flex items-center gap-3">
                 {/* Logo upload */}
                 <button
                   type="button"
@@ -280,31 +280,31 @@ export function NewProjectForm({ users }: { users: User[] }) {
                 />
 
                 <Input
-                  id="slug" name="slug" required
-                  placeholder="ex: refonte-ecommerce"
-                  className="font-mono text-sm h-10 flex-1"
-                />
-              </div>
-              {state?.fieldErrors?.slug && (
-                <span className="text-xs text-destructive -mt-3">{state.fieldErrors.slug[0]}</span>
-              )}
-
-              {/* Row 2: Title + Description stacked */}
-              <div className="flex flex-col w-full relative">
-                <Input
                   id="name" name="name" required
                   placeholder="Nom du projet"
-                  className="relative z-10 border-input rounded-t-lg rounded-b-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary px-4 py-3 h-12 text-sm font-medium focus-visible:z-20"
-                />
-                {state?.fieldErrors?.name && (
-                  <span className="text-xs text-destructive px-4 py-1 relative z-20 bg-background">{state.fieldErrors.name[0]}</span>
-                )}
-                <Textarea
-                  id="description" name="description" rows={3}
-                  placeholder="Description (optionnelle)"
-                  className="relative z-10 -mt-[1px] border-input rounded-t-none rounded-b-lg shadow-sm focus-visible:ring-1 focus-visible:ring-primary min-h-[80px] px-4 py-3 resize-y bg-transparent focus-visible:z-20 border-t-transparent focus-visible:border-t-input"
+                  className="h-10 flex-1 text-sm font-medium"
                 />
               </div>
+              {state?.fieldErrors?.name && (
+                <span className="text-xs text-destructive -mt-3">{state.fieldErrors.name[0]}</span>
+              )}
+
+              {/* Row 2: URL */}
+              <div className="flex items-center gap-2 rounded-lg border border-input shadow-sm px-3 h-9 focus-within:ring-1 focus-within:ring-primary transition-colors">
+                <Link2 size={14} className="text-muted-foreground shrink-0" />
+                <input
+                  id="url" name="url"
+                  placeholder="ex : https://monsite.com"
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground h-full"
+                />
+              </div>
+
+              {/* Row 4: Description */}
+              <Textarea
+                id="description" name="description" rows={3}
+                placeholder="Description (optionnelle)"
+                className="min-h-[80px] px-4 py-3 resize-y text-sm"
+              />
 
               {/* Row 3: Project Members */}
               <div className="flex items-center gap-2">
