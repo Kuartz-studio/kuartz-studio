@@ -417,7 +417,7 @@ export function ProjectsTable({ projects: serverProjects, allUsers, currentUserI
               {/* Users (multi-select) — admins excluded */}
               <td className="px-4 py-2">
                 <UsersCell
-                  projectUsers={project.users}
+                  projectUsers={project.users.filter(u => u.role !== "admin")}
                   allUsers={nonAdminUsers}
                   onSave={(userIds) => handleUpdateUsers(project.id, userIds)}
                 />
