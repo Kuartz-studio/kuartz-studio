@@ -15,6 +15,8 @@ const loginSchema = z.object({
 
 export type AuthState = {
   error?: string;
+  success?: boolean;
+  redirectTo?: string;
   fieldErrors?: Record<string, string[]>;
 };
 
@@ -37,7 +39,7 @@ export async function loginAction(prevState: AuthState, formData: FormData): Pro
   // Les clients ("customer") se connectent sans mot de passe
   if (user.role === "customer") {
     await createSession(user.id, user.role);
-    redirect("/portal"); 
+    return { success: true, redirectTo: "/portal" };
   }
   
   // Les admins et salariés nécessitent un code PIN (digicode)
@@ -50,7 +52,7 @@ export async function loginAction(prevState: AuthState, formData: FormData): Pro
   }
   
   await createSession(user.id, user.role);
-  redirect("/tasks");
+  return { success: true, redirectTo: "/tasks" };
 }
 
 export async function logoutAction() {

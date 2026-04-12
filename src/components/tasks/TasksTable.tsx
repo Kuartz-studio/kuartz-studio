@@ -685,11 +685,11 @@ export function TasksTable({
                 const isMyTask = currentUserId ? task.assignees.some(a => a.user.id === currentUserId) : false;
                 const isDone = task.status === "DONE";
                 return (
-                  <tr key={task.id} className={cn(
-                    "group border-b last:border-0 border-[var(--color-border)] transition-colors",
+                  <tr key={task.id} onClick={() => openTask(task)} className={cn(
+                    "group border-b last:border-0 border-[var(--color-border)] transition-colors cursor-pointer",
                     isDone ? "opacity-50" : "hover:bg-[var(--color-muted)]",
                     isMyTask && !isDone && "bg-primary/5",
-                    isMyTask && isDone && "bg-primary/5 opacity-40" // a bit more faded if it's both user task and done
+                    isMyTask && isDone && "bg-primary/5 opacity-40"
                   )}>
                 
                     {/* ID */}
@@ -705,7 +705,7 @@ export function TasksTable({
                     </td>
 
                     {/* Titre */}
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2.5 cursor-default">
                       <EditableTitle 
                         value={task.title} 
                         onSave={(v) => handleUpdateTitle(task.id, v)} 
@@ -713,7 +713,7 @@ export function TasksTable({
                     </td>
 
                     {/* Tags */}
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2.5 cursor-default">
                       <TagsCell 
                         tags={task.tags} 
                         allTags={allTags} 
@@ -728,7 +728,7 @@ export function TasksTable({
                     </td>
 
                     {/* Echéance */}
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2.5 cursor-default">
                       <DateCell 
                         value={task.targetDate} 
                         status={task.status} 
@@ -737,7 +737,7 @@ export function TasksTable({
                     </td>
 
                     {/* Assigné */}
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2.5 cursor-default">
                       <AssigneeCell 
                         assignees={task.assignees} 
                         allUsers={projectUserMap ? allUsers.filter(u => u.role === "admin" || (projectUserMap[task.projectId] ?? []).includes(u.id)) : allUsers} 
@@ -746,17 +746,17 @@ export function TasksTable({
                     </td>
 
                     {/* Statut (icon only, compact) */}
-                    <td className="px-2 py-2.5 text-center">
+                    <td className="px-2 py-2.5 text-center cursor-default">
                       <StatusCell value={task.status} onSave={(v) => handleUpdateStatus(task.id, v)} />
                     </td>
 
                     {/* Priorité (icon only, compact) */}
-                    <td className="px-2 py-2.5 text-center">
+                    <td className="px-2 py-2.5 text-center cursor-default">
                       <PriorityCell value={task.priority} onSave={(v) => handleUpdatePriority(task.id, v)} />
                     </td>
 
                     {/* Actions */}
-                    <td className="px-2 py-2.5 text-center">
+                    <td className="px-2 py-2.5 text-center cursor-default" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors outline-none mx-auto cursor-pointer">
                           <MoreHorizontal className="h-4 w-4" />
