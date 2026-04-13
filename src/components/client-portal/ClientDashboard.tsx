@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Link as LinkIcon, Settings, Globe, Layers, Palette, PenTool, Type } from "lucide-react";
+import { FileText, Link as LinkIcon, Settings, Globe, Layers, Palette, PenTool, Type, FileSpreadsheet, GitBranch, BookOpen, Film, Image, File } from "lucide-react";
 import { TaskIcon, DocumentsIcon, WebflowIcon } from "@/components/ui/table-icons";
 import { FramerIcon } from "@/components/icons";
 import { ClientSidebar } from "./ClientSidebar";
@@ -36,6 +36,19 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
   const [activeSubTab, setActiveSubTab] = useState<string | null>(null);
 
   const settings = project.portalSettings || { modules: { tasks: true, integration: false, branding: false, files: true } };
+
+  const getFileFormatIcon = (format: string) => {
+    const f = format?.toLowerCase() || "other";
+    if (f === "figma") return <Layers size={14} />;
+    if (f === "drive" || f === "google_drive") return <FileSpreadsheet size={14} />;
+    if (f === "notion") return <BookOpen size={14} />;
+    if (f === "github") return <GitBranch size={14} />;
+    if (f === "website" || f === "url") return <Globe size={14} />;
+    if (f === "pdf") return <FileText size={14} />;
+    if (f === "video") return <Film size={14} />;
+    if (f === "image") return <Image size={14} />;
+    return <File size={14} />;
+  };
 
   const navItems: any[] = [];
 
@@ -93,6 +106,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
     let subItems = files.map((file: any) => ({
       id: file.id,
       label: file.title,
+      icon: getFileFormatIcon(file.format),
       isActive: false, // We just open in new tab
       onClick: () => {
         window.open(file.url, "_blank");
@@ -185,6 +199,7 @@ export function ClientDashboard({ project, currentUser, isAdmin, tasks, document
                   projectUserMap={projectUserMap}
                   currentUserId={currentUser?.id}
                   enableReorder={isAdmin}
+                  showMyTasksFilter={false}
                 />
               ) : activeTab.startsWith("cat-") && activeSubTab ? (
                 <ClientDocumentRenderer document={documents.find((d: any) => d.id === activeSubTab)} />

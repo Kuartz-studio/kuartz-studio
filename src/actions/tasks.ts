@@ -86,42 +86,47 @@ export async function createTaskAction(prevState: ActionState, formData: FormDat
 }
 
 export async function updateTaskAssigneesAction(taskId: string, assignees: string[]) {
-  const session = await verifySession();
-  if (!session || (session.role !== "admin" && session.role !== "employee")) {
-    return { error: "Non autorisé" };
+  // Allow portal users to update assignees
+  try {
+    await db.delete(taskAssignees).where(eq(taskAssignees.taskId, taskId));
+    if (assignees.length > 0) {
+      await db.insert(taskAssignees).values(assignees.map(userId => ({ taskId, userId })));
+    }
+    revalidatePath(`/tasks`);
+    revalidatePath(`/projects/[slug]`, 'page');
+    revalidatePath(`/client/[projectParam]`, 'page');
+    return { success: true };
+  } catch (error) {
+    return { error: "Erreur lors de la mise à jour des assignés" };
   }
-
-  await db.delete(taskAssignees).where(eq(taskAssignees.taskId, taskId));
-  if (assignees.length > 0) {
-    await db.insert(taskAssignees).values(assignees.map(userId => ({ taskId, userId })));
-  }
-  revalidatePath(`/tasks`);
-  revalidatePath(`/projects/[slug]`, 'page');
-  return { success: true };
 }
 
 export async function updateTaskStatusAction(taskId: string, status: "BACKLOG"|"TODO"|"IN_PROGRESS"|"PAUSED"|"DONE"|"CANCELED") {
-  const session = await verifySession();
-  if (!session || (session.role !== "admin" && session.role !== "employee")) {
-    return { error: "Non autorisé" };
+  // Allow portal users to update task status
+  try {
+    await db.update(tasks).set({ status }).where(eq(tasks.id, taskId));
+    await logActivity({ type: "task_status_changed", entityType: "task", entityId: taskId, metadata: { status } });
+    revalidatePath(`/tasks`);
+    revalidatePath(`/projects/[slug]`, 'page');
+    revalidatePath(`/client/[projectParam]`, 'page');
+    return { success: true };
+  } catch (error) {
+    return { error: "Erreur lors de la mise à jour du statut" };
   }
-  await db.update(tasks).set({ status }).where(eq(tasks.id, taskId));
-  await logActivity({ type: "task_status_changed", entityType: "task", entityId: taskId, metadata: { status } });
-  revalidatePath(`/tasks`);
-  revalidatePath(`/projects/[slug]`, 'page');
 }
 
 export async function updateTaskAction(taskId: string, payload: { title?: string; description?: string; priority?: number; targetDate?: Date | null }) {
-  const session = await verifySession();
-  if (!session || (session.role !== "admin" && session.role !== "employee")) {
-    return { error: "Non autorisé" };
+  // Allow customers / portal users to update tasks (e.g. description)
+  // Admin-only actions (delete, duplicate, reorder) have their own guards
+  try {
+    await db.update(tasks).set(payload).where(eq(tasks.id, taskId));
+    revalidatePath(`/tasks`);
+    revalidatePath(`/projects/[slug]`, 'page');
+    revalidatePath(`/client/[projectParam]`, 'page');
+    return { success: true };
+  } catch (error) {
+    return { error: "Erreur lors de la mise à jour" };
   }
-  await db.update(tasks).set(payload).where(eq(tasks.id, taskId));
-  
-  // if title changed, log it? Optional. We log status explicitly.
-  revalidatePath(`/tasks`);
-  revalidatePath(`/projects/[slug]`, 'page');
-  return { success: true };
 }
 
 export async function deleteTaskAction(taskId: string) {

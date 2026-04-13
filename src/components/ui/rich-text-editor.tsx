@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Youtube from "@tiptap/extension-youtube";
-import { Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Undo, Redo, Video } from "lucide-react";
+import Link from "@tiptap/extension-link";
+import { Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Undo, Redo, Video, Pencil, Link as LinkIcon } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ interface RichTextEditorProps {
   placeholder?: string;
   autoFocus?: boolean;
   className?: string;
+  readOnly?: boolean;
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -61,6 +63,25 @@ const MenuBar = ({ editor }: { editor: any }) => {
 
       <div className="mx-1 h-4 w-[1px] bg-border" />
 
+      <Button
+        variant="ghost"
+        size="sm"
+        className={cn("h-8 px-2", editor.isActive("link") && "bg-accent")}
+        onClick={() => {
+          if (editor.isActive("link")) {
+            editor.chain().focus().unsetLink().run();
+            return;
+          }
+          const url = window.prompt("URL du lien :");
+          if (url) {
+            editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+          }
+        }}
+      >
+        <LinkIcon className="h-4 w-4 mr-1" />
+        <span className="text-xs">Lien</span>
+      </Button>
+
       <Button 
         variant="ghost" 
         size="sm" 
@@ -90,11 +111,19 @@ const MenuBar = ({ editor }: { editor: any }) => {
   );
 };
 
-export function RichTextEditor({ content, onChange, placeholder = "Rédigez votre document...", autoFocus = false, className }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, placeholder = "Rédigez votre document...", autoFocus = false, className, readOnly = false }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
+      }),
+      Link.configure({
+        openOnClick: readOnly,
+        HTMLAttributes: {
+          target: "_blank",
+          rel: "noopener noreferrer",
+          class: "text-primary underline underline-offset-2 hover:text-primary/80 transition-colors",
+        },
       }),
       Youtube.configure({
         controls: false,
@@ -109,6 +138,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Rédigez votr
       }),
     ],
     content: content,
+    editable: !readOnly,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
@@ -126,12 +156,66 @@ export function RichTextEditor({ content, onChange, placeholder = "Rédigez votr
     }
   }, [content, editor]);
 
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!readOnly);
+    }
+  }, [readOnly, editor]);
+
   return (
     <div className={cn("flex flex-col border rounded-md overflow-hidden bg-background h-full shadow-sm", className)}>
-      <MenuBar editor={editor} />
-      <div className="flex-1 overflow-y-auto cursor-text bg-background" onClick={() => editor?.commands.focus()}>
+      {!readOnly && <MenuBar editor={editor} />}
+      <div className={cn("flex-1 overflow-y-auto bg-background", readOnly ? "cursor-default" : "cursor-text")} onClick={() => !readOnly && editor?.commands.focus()}>
         <EditorContent editor={editor} className="h-full" />
       </div>
+    </div>
+  );
+}
+
+/**
+ * RichTextEditor with a read/edit toggle button.
+ * Starts in read mode. A pencil button in the header switches to edit mode.
+ */
+export function RichTextEditorWithToggle({ 
+  content, 
+  onChange, 
+  placeholder, 
+  className 
+}: { 
+  content: string; 
+  onChange: (html: string) => void; 
+  placeholder?: string; 
+  className?: string;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+
+  return (
+    <div className={cn("relative", className)}>
+      {!isEditing && (
+        <button
+          onClick={() => setIsEditing(true)}
+          className="absolute top-2 right-2 z-20 flex items-center justify-center h-7 w-7 rounded-md bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          title="Modifier la description"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {isEditing && (
+        <button
+          onClick={() => setIsEditing(false)}
+          className="absolute top-2 right-2 z-20 flex items-center justify-center px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors cursor-pointer"
+          title="Terminer l'édition"
+        >
+          Terminé
+        </button>
+      )}
+      <RichTextEditor
+        content={content}
+        onChange={onChange}
+        placeholder={placeholder}
+        readOnly={!isEditing}
+        className="border-0 rounded-none shadow-none"
+      />
     </div>
   );
 }

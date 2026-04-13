@@ -2,8 +2,7 @@ import { verifySession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { LogOut, Activity, Book } from "lucide-react";
 import { logoutAction } from "@/actions/auth";
-import { getMyNotifications, getUnreadCount } from "@/actions/notifications";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
+
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { KuartzIcon } from "@/components/icons";
@@ -28,8 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   const [currentUser] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
-  const myNotifs = await getMyNotifications();
-  const unreadCount = await getUnreadCount();
+
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
@@ -39,10 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <KuartzIcon className="w-6 h-6 text-foreground" />
             <span className="font-bold text-xl tracking-tight">Kuartz</span>
           </div>
-          <div className="flex items-center gap-1">
-            <ThemeToggle />
-            <NotificationBell notifications={myNotifs} unreadCount={unreadCount} />
-          </div>
+          <ThemeToggle />
         </div>
         <SidebarNav
           groups={[

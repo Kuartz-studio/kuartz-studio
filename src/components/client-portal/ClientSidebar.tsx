@@ -13,7 +13,7 @@ type NavItem = {
   icon: React.ReactNode;
   isActive?: boolean;
   onClick?: () => void;
-  subItems?: { id: string; label: string; isActive?: boolean; onClick?: () => void }[];
+  subItems?: { id: string; label: string; icon?: React.ReactNode; isActive?: boolean; onClick?: () => void }[];
 };
 
 type Props = {
@@ -91,12 +91,13 @@ export function ClientSidebar({ projectName, projectSlug, logoBase64, items }: P
                         key={sub.id}
                         onClick={() => sub.onClick?.()}
                         className={`
-                          text-left py-1.5 px-2 rounded-md text-sm transition-colors relative
+                          flex items-center gap-2 text-left py-1.5 px-2 rounded-md text-sm transition-colors relative
                           before:absolute before:left-[-19px] before:top-1/2 before:-translate-y-1/2 before:w-4 before:h-px before:bg-border
                           ${sub.isActive ? "font-medium text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}
                         `}
                       >
-                        {sub.label}
+                        {sub.icon && <div className="shrink-0 opacity-70">{sub.icon}</div>}
+                        <span className="truncate">{sub.label}</span>
                       </button>
                     ))}
                   </div>

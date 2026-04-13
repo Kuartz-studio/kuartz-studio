@@ -19,7 +19,7 @@ import { StatusIcon, PriorityIcon, AvatarCustom } from "@/components/ui/table-ic
 import { updateTaskAction, updateTaskAssigneesAction, updateTaskStatusAction, deleteTaskAction, duplicateTaskAction, updateTasksOrderAction } from "@/actions/tasks";
 import { createTagAction, deleteTagAction, updateTagColorAction, updateTaskTagsAction } from "@/actions/tags";
 import { ProjectTag } from "@/components/projects/ProjectTag";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextEditorWithToggle } from "@/components/ui/rich-text-editor";
 
 // Types
 export interface DbTag { id: string; name: string; color: string | null; projectId: string | null; }
@@ -433,6 +433,7 @@ export function TasksTable({
   projectUserMap,
   currentUserId,
   enableReorder,
+  showMyTasksFilter = true,
 }: { 
   tasks: EnrichedTask[]; 
   allTags: DbTag[];
@@ -441,6 +442,7 @@ export function TasksTable({
   projectUserMap: Record<string, string[]>;
   currentUserId?: string;
   enableReorder?: boolean;
+  showMyTasksFilter?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [detailTask, setDetailTask] = useState<EnrichedTask | null>(null);
@@ -734,9 +736,11 @@ export function TasksTable({
                       )}
                     >
                       {/* Drag handle */}
-                      <td className="px-2 py-2.5 cursor-grab active:cursor-grabbing text-center">
-                        <GripVertical className="h-4 w-4 text-muted-foreground opacity-30 hover:opacity-100 transition-opacity mx-auto" />
-                      </td>
+                      {canReorder && (
+                        <td className="px-2 py-2.5 cursor-grab active:cursor-grabbing text-center">
+                          <GripVertical className="h-4 w-4 text-muted-foreground opacity-30 hover:opacity-100 transition-opacity mx-auto" />
+                        </td>
+                      )}
                       
                       {/* ID */}
                     <td className="px-4 py-2.5">
@@ -837,7 +841,7 @@ export function TasksTable({
         
         {/* Footer actions */}
         <div className="bg-[var(--color-muted)]/30 border-t border-[var(--color-border)] p-3 px-4 flex justify-end gap-6">
-          {currentUserId && (
+          {showMyTasksFilter && currentUserId && (
             <div className="flex items-center gap-2">
               <Switch id="my-tasks" checked={myTasksChecked} onCheckedChange={handleMyTasksChange} />
               <label htmlFor="my-tasks" className="text-[12px] font-medium text-[var(--color-muted-foreground)] cursor-pointer select-none">
@@ -907,11 +911,10 @@ export function TasksTable({
                 <div className="px-3 py-1.5 bg-[var(--color-muted)]/50 border-b">
                   <span className="text-[10px] uppercase font-medium text-[var(--color-muted-foreground)] tracking-wide">Description</span>
                 </div>
-                <RichTextEditor
+                <RichTextEditorWithToggle
                   content={detailTask.description || ""}
                   onChange={(html) => handleUpdateDescription(detailTask.id, html)}
                   placeholder="Ajoutez une description..."
-                  className="border-0 rounded-none shadow-none"
                 />
               </div>
             </div>
