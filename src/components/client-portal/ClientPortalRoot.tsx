@@ -45,14 +45,30 @@ export function ClientPortalRoot({ project, customers, isAdmin, progressStats, t
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
+  const storageKey = `kuartz-portal-user-${project.slug}`;
+
   useEffect(() => {
     if (isAdmin) {
       setConfirmed(true);
-    } else if (customers.length === 1 && customers[0]) {
+      return;
+    }
+    if (customers.length === 1 && customers[0]) {
       setSelectedCustomer(customers[0]);
       setConfirmed(true);
+      return;
     }
-  }, [customers, isAdmin]);
+    // Restore from localStorage
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const found = customers.find(c => c.id === stored);
+        if (found) {
+          setSelectedCustomer(found);
+          setConfirmed(true);
+        }
+      }
+    } catch {}
+  }, [customers, isAdmin, storageKey]);
 
   if (confirmed) {
     return (
@@ -206,7 +222,12 @@ export function ClientPortalRoot({ project, customers, isAdmin, progressStats, t
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 15 }}
                   transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                  onClick={() => setConfirmed(true)}
+                  onClick={() => {
+                    if (selectedCustomer) {
+                      try { localStorage.setItem(storageKey, selectedCustomer.id); } catch {}
+                    }
+                    setConfirmed(true);
+                  }}
                   className="flex items-center gap-2 px-8 py-3 mt-4 bg-foreground text-background rounded-full font-semibold text-sm hover:scale-105 transition-transform duration-200 ease-out cursor-pointer shadow-lg"
                 >
                   Accéder au portail
